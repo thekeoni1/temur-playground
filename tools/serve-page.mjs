@@ -99,8 +99,26 @@ const server = http.createServer((req, res) => {
     let body = "";
     req.on("data", (c) => (body += c));
     req.on("end", () => {
-      fs.writeFileSync("build/page-selftest.json", body);
-      console.log("REPORT received: " + body.length + " B -> build/page-selftest.json");
+      // EACH MODE GETS ITS OWN FILE. They all used to post to one
+      // filename, so the last run silently overwrote the evidence of the
+      // one before it, and a proof that had in fact been taken looked
+      // like a proof that had never happened. The mode names itself in
+      // the body; anything unrecognised lands under "unknown" rather
+      // than on top of a real report.
+      let mode = "selftest";
+      try {
+        const parsed = JSON.parse(body);
+        if (typeof parsed.mode === "string" && /^[a-z][a-z0-9-]{0,30}$/.test(parsed.mode)) {
+          mode = parsed.mode;
+        } else if (parsed.mode !== undefined) {
+          mode = "unknown";
+        }
+      } catch (e) {
+        mode = "unparseable";
+      }
+      const out = "build/page-report-" + mode + ".json";
+      fs.writeFileSync(out, body);
+      console.log("REPORT received: " + body.length + " B -> " + out);
       res.writeHead(204).end();
     });
     return;

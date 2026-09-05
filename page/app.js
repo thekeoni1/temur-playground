@@ -493,6 +493,10 @@ async function main() {
           if (q.has("relaycheck") && networked) {
             relaycheck();
           }
+          // landingcheck proves the page's own landing reached the guest.
+          if (q.has("landingcheck") && networked) {
+            landingcheck();
+          }
         },
         networked ? 900 : 300,
       );
@@ -529,7 +533,13 @@ async function selftest() {
     );
     return;
   }
-  const rep = { ...window.__p3, ua: navigator.userAgent, cols: COLS, rows: ROWS };
+  const rep = {
+    mode: "selftest",
+    ...window.__p3,
+    ua: navigator.userAgent,
+    cols: COLS,
+    rows: ROWS,
+  };
   try {
     await wait(4000);
     rep.frameAfterLaunch = screen();
@@ -648,4 +658,44 @@ async function relaycheck() {
     ),
   });
   status("relaycheck: banner " + (seen ? "appeared" : "MISSING") + ", cleared " + (cleared ? "yes" : "no"));
+}
+
+// --- landingcheck -----------------------------------------------------
+//
+// Proves that what the PAGE sends on the networked tier actually lands:
+// the MOTD, then temur's wizard sitting at its first question. Like
+// netcheck it matches ONE known line and posts that match, never the
+// terminal buffer, so it cannot carry anything a visitor typed. It also
+// reports the footer stamp and the paste hint, which are plain page text.
+// It belongs in the same do-not-run-with-a-key list as the others.
+async function landingcheck() {
+  await wait(9000);
+  const flat = screen().replace(/\s+/g, " ");
+  const motd = /temur init\s+set up a provider/.test(flat);
+  const prompt = /Template \[1\]:/.test(flat);
+  const wrote = /Config will be written to: (\/\S+)/.exec(flat);
+  const stampEl = document.getElementById("stamp");
+  const hintEl = document.getElementById("pastehint");
+  await fetch("/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      {
+        mode: "landingcheck",
+        tier: "networked",
+        motdShown: motd,
+        wizardAtFirstQuestion: prompt,
+        configPath: wrote ? wrote[1] : null,
+        relayWatch: window.__p3 && window.__p3.relayWatch,
+        readyMs: window.__p3 && window.__p3.readyMs,
+        stampText: stampEl ? stampEl.textContent.trim() : null,
+        pasteHint: hintEl ? hintEl.textContent.replace(/\s+/g, " ").trim() : null,
+        relayWs: RELAY_WS,
+        relayWisp: RELAY_WISP,
+      },
+      null,
+      1,
+    ),
+  });
+  status("landingcheck posted");
 }

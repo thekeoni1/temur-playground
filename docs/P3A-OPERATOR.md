@@ -155,8 +155,8 @@ failures.
 
 ## Do NOT, while a key exists
 
-- Do NOT open the page with `?selftest=1`, `?netcheck=1` or
-  `?relaycheck=1`. The self-test captures the terminal buffer and posts
+- Do NOT open the page with `?selftest=1`, `?netcheck=1`,
+  `?relaycheck=1` or `?landingcheck=1`. The self-test captures the terminal buffer and posts
   it to the local server. It is hard-coded to REFUSE the networked tier
   for exactly this reason, but do not rely on that; just do not use any
   of them during keyed work.
