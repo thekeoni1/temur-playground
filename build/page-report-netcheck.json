@@ -4,9 +4,9 @@
  "tuiReadyMs": null,
  "wireBytes": 15937162,
  "stateBytes": 35139416,
- "fetchMs": 34,
- "restoreMs": 0,
- "readyMs": 3328,
+ "fetchMs": 156,
+ "restoreMs": 64,
+ "readyMs": 1596,
  "relayWatch": "adapter-socket",
  "line": "PASS: reachable: https://api.anthropic.com (TCP connect + TLS handshake) #"
 }

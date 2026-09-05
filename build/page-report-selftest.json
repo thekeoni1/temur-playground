@@ -1,0 +1,18 @@
+{
+ "mode": "selftest",
+ "tier": "offline",
+ "wireBytes": 15581537,
+ "stateBytes": 34733896,
+ "fetchMs": 2180,
+ "restoreMs": 74,
+ "readyMs": 3012,
+ "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0",
+ "cols": 80,
+ "rows": 24,
+ "frameAfterLaunch": " # new session                                             local · temur 0.33.0\n ▌ [!] prompt profile: compact (context_window 8192 is below 20480; set\n ▌ prompt_profile to \"full\" to override)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n ▌ > ask anything… (exit to quit)\n   enter send · ↑↓ history · pgup/pgdn scroll · ctrl+c quit\n /root                local · thinking off · session — in / — out · cache r— w—",
+ "frameAfterTyping": " # new session                                             local · temur 0.33.0\n ▌ [!] prompt profile: compact (context_window 8192 is below 20480; set\n ▌ prompt_profile to \"full\" to override)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n ▌ > hello from p3a              \n   enter send · ↑↓ history · pgup/pgdn scroll · ctrl+c quit\n /root                local · thinking off · session — in / — out · cache r— w—",
+ "echoMs": 32,
+ "frameAfterExit": "TERM=xterm temur\n# ",
+ "tuiReadyMs": 3083,
+ "ok": true
+}
