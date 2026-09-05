@@ -47,11 +47,11 @@ const RELAY_WISP = RELAY_WS.replace(/^wss:/, "wisps:").replace(/^ws:/, "wisp:");
 const RELAY_VERSION_URL =
   RELAY_WS.replace(/^wss:/, "https:").replace(/^ws:/, "http:") + "version";
 
-// OPERATOR DECISION D, still open: the public repository's name has not
-// been chosen, so there is nothing correct to link to yet. The footer
-// says so rather than pointing somewhere wrong; the deploy step sets
-// this and the AGPL source link is live from then on.
-const REPO_URL = null; // e.g. "https://github.com/<owner>/<repo>"
+// The public repository. This is the AGPL source offer the footer makes
+// good on, so it is a real link and not a placeholder: anyone who can
+// reach a running relay must be able to reach its complete corresponding
+// source, and the footer plus the commit stamp are how they do it.
+const REPO_URL = "https://github.com/thekeoni1/temur-playground";
 
 const SNAP_ONLINE = "assets/state-p5-page.bin.gz";
 const SNAP_OFFLINE = "assets/state-page.bin.gz";

@@ -11,6 +11,11 @@ DNS-ONLY (unproxied), so the trust story stays browser -> relay ->
 provider with no third party in the ciphertext path. Caddy terminates
 TLS on the VPS and reverse-proxies to the relay on loopback.
 
+The apex temur.live redirects to
+https://github.com/thekeoni1/temur-playground. That is a Cloudflare
+redirect rule, not repository content, so it is configured in the
+dashboard and there is nothing here to deploy for it.
+
 ## 0. Before anything
 
 - DNS: relay.temur.live must be an A record to the VPS, DNS-only (grey
@@ -24,14 +29,15 @@ TLS on the VPS and reverse-proxies to the relay on loopback.
 ## 1. The code, at the published commit
 
     sudo adduser --system --group --home /srv/relay relay
-    sudo -u relay git clone <REPO_URL> /srv/relay/app
+    sudo -u relay git clone https://github.com/thekeoni1/temur-playground \
+        /srv/relay/app
     cd /srv/relay/app
     sudo -u relay git checkout <PUBLISHED_COMMIT>
 
-`<REPO_URL>` and `<PUBLISHED_COMMIT>` are the public repository and the
-commit being deployed. THE COMMIT MUST ALREADY BE PUBLISHED. That is the
-standing rule and the reason for the stamp; deploying something not yet
-pushed makes the AGPL source offer false.
+`<PUBLISHED_COMMIT>` is the commit being deployed. THE COMMIT MUST
+ALREADY BE PUBLISHED. That is the standing rule and the reason for the
+stamp; deploying something not yet pushed makes the AGPL source offer
+false.
 
 ## 2. Install and stamp
 

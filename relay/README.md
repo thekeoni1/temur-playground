@@ -25,8 +25,12 @@ matters for a thing like this, because this relay is only ever used as a
 network service: anyone who can reach a running instance must be offered
 its complete corresponding source.
 
-That obligation is met by publishing this subtree in the public
-repository and linking to it from the page the relay serves.
+That obligation is met by publishing this subtree at
+
+    https://github.com/thekeoni1/temur-playground
+
+and linking to it from the page the relay serves, in the footer, beside
+the commit the running build was made from.
 
 STANDING RULE: THE DEPLOYED RELAY ALWAYS MATCHES A PUBLISHED COMMIT.
 Publish first, then deploy; never the other way round, and never a local
