@@ -18,10 +18,40 @@ const COLS = 80;
 const ROWS = 24;
 const MEM_MB = 128;
 
-// The relay URL is a knob: P3a is 127.0.0.1 and nothing else. P3b, if it
-// is ever authorized, flips this and NOTHING else on the page.
-const RELAY_WISP = "wisp://127.0.0.1:8089/";
-const RELAY_WS = "ws://127.0.0.1:8089/";
+// --- the relay endpoint, ONE knob ------------------------------------
+//
+// RELAY_WS is the truth; RELAY_WISP is DERIVED from it, because v86 wants
+// its own scheme name for the same URL (libv86.js does
+// url.replace("wisp://","ws://") and url.replace("wisps://","wss://"),
+// verified in the pinned build). Deriving is the point: two constants
+// hand-maintained for one endpoint is skew waiting to happen, and a page
+// pointed half at production and half at a dev port would fail in a way
+// nobody reads correctly.
+//
+// WHICH endpoint is decided by where the page is served from, not by a
+// query parameter. A local page therefore cannot accidentally talk to
+// the public relay, and the deployed page cannot be talked into talking
+// to anything else: the shipped CSP names the production relay and
+// nothing else, so a tampered URL is refused by the browser rather than
+// merely discouraged.
+const RELAY_PROD = "wss://relay.temur.live/";
+const RELAY_DEV = "ws://127.0.0.1:8089/";
+const LOCAL =
+  location.hostname === "localhost" ||
+  location.hostname === "127.0.0.1" ||
+  location.hostname === "";
+const RELAY_WS = LOCAL ? RELAY_DEV : RELAY_PROD;
+const RELAY_WISP = RELAY_WS.replace(/^wss:/, "wisps:").replace(/^ws:/, "wisp:");
+
+// The relay's own /version, for the footer link. Same host, http(s).
+const RELAY_VERSION_URL =
+  RELAY_WS.replace(/^wss:/, "https:").replace(/^ws:/, "http:") + "version";
+
+// OPERATOR DECISION D, still open: the public repository's name has not
+// been chosen, so there is nothing correct to link to yet. The footer
+// says so rather than pointing somewhere wrong; the deploy step sets
+// this and the AGPL source link is live from then on.
+const REPO_URL = null; // e.g. "https://github.com/<owner>/<repo>"
 
 const SNAP_ONLINE = "assets/state-p5-page.bin.gz";
 const SNAP_OFFLINE = "assets/state-page.bin.gz";
@@ -245,9 +275,50 @@ function watchRelay(emulator) {
   return state;
 }
 
+// --- the build stamp, shown ------------------------------------------
+//
+// tools/stamp.mjs writes page/build-info.js from the commit; it is not
+// tracked, so no committed file ever carries a sha that could be stale.
+// If it is missing the footer says the build is unstamped rather than
+// inventing a version, which is the same rule the relay follows when it
+// refuses to start without one.
+function renderStamp() {
+  const el = document.getElementById("stamp");
+  if (!el) return;
+  const b = window.__BUILD__;
+  const parts = [];
+  parts.push(b && b.commit ? "build " + b.short : "UNSTAMPED BUILD");
+  el.textContent = parts.join("");
+
+  const src = document.createElement("span");
+  if (REPO_URL) {
+    src.appendChild(document.createTextNode(" \u00b7 "));
+    const a = document.createElement("a");
+    a.href = REPO_URL;
+    a.textContent = "source, relay included (AGPL-3.0)";
+    src.appendChild(a);
+  } else {
+    src.appendChild(
+      document.createTextNode(
+        " \u00b7 relay source is AGPL-3.0; the repository link is set at deploy",
+      ),
+    );
+  }
+  el.appendChild(src);
+
+  const v = document.createElement("span");
+  v.appendChild(document.createTextNode(" \u00b7 "));
+  const a2 = document.createElement("a");
+  a2.href = RELAY_VERSION_URL;
+  a2.textContent = "relay /version";
+  v.appendChild(a2);
+  el.appendChild(v);
+}
+
 // --- boot -------------------------------------------------------------
 
 async function main() {
+  renderStamp();
   if (typeof DecompressionStream === "undefined") {
     status("this browser has no DecompressionStream; cannot gunzip the snapshot", true);
     return;

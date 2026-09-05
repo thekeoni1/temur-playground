@@ -12,3 +12,5 @@ build/state*.bin
 build/page-selftest.json
 page/vendor/
 page/assets/
+page/build-info.js
+relay/build-info.json

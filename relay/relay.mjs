@@ -122,6 +122,47 @@ if (typeof NodeTCPSocket !== "function") {
 const PORT = Number(process.env.RELAY_PORT || 8089);
 const HOST = process.env.RELAY_HOST || "127.0.0.1";
 
+// --- the build stamp --------------------------------------------------
+//
+// The standing rule is that the deployed relay always matches a
+// published commit. This is what makes that checkable instead of merely
+// asserted: tools/stamp.mjs writes relay/build-info.json from the
+// commit, and GET /version answers with it, so anyone can compare what
+// is running against what is published.
+//
+// A missing stamp is a REFUSAL, not a default. The alternative is a
+// relay that answers /version with "unknown", which looks like an answer
+// and is worth nothing. RELAY_ALLOW_UNSTAMPED=1 exists for running this
+// on a laptop against a dirty tree; it does not invent a sha, it makes
+// the relay say out loud, in relay_start and in every /version answer,
+// that it has none.
+const BUILD_INFO_PATH = new URL("./build-info.json", import.meta.url);
+let build;
+try {
+  build = JSON.parse(fs.readFileSync(BUILD_INFO_PATH, "utf8"));
+} catch (e) {
+  if (process.env.RELAY_ALLOW_UNSTAMPED === "1") {
+    build = { commit: null, short: null, built: null, unstamped: true };
+    console.error(
+      "relay: RUNNING UNSTAMPED. No relay/build-info.json, and " +
+        "RELAY_ALLOW_UNSTAMPED=1 is set. /version will report no commit. " +
+        "This must never be a deployment.",
+    );
+  } else {
+    console.error(
+      "relay: REFUSING TO START. No relay/build-info.json, so this " +
+        "process cannot say which commit it is. Run:\n" +
+        "    node tools/stamp.mjs\n" +
+        "from the repository root, then start it again. The deployed " +
+        "relay always matches a published commit, and /version is how " +
+        "that is checked; a relay that cannot answer it is not " +
+        "deployable. RELAY_ALLOW_UNSTAMPED=1 overrides this for local " +
+        "work only.",
+    );
+    process.exit(4);
+  }
+}
+
 // --- who is the client? ----------------------------------------------
 //
 // The per-IP limits below are only worth anything if the IP is the
@@ -249,7 +290,12 @@ Object.assign(wisp.options, {
   // takes the whole relay process down. Per-host capping is enforced
   // below instead, in CountingTCPSocket.connect().
   stream_limit_per_host: -1,
-  wisp_motd: null,
+  // The same stamp the page footer and GET /version show, on the wisp
+  // greeting itself, so it is visible to a client that never fetches
+  // anything over HTTP.
+  wisp_motd: build.commit
+    ? "temur sandbox relay, commit " + build.short + " (source: AGPL-3.0, see /version)"
+    : null,
 });
 
 // --- connection-level accounting -------------------------------------
@@ -404,7 +450,32 @@ function allowUpgrade(ip) {
 }
 
 const server = http.createServer((req, res) => {
-  // No HTTP surface at all: this endpoint exists only to be upgraded.
+  // Exactly one HTTP route. Everything else exists only to be upgraded.
+  if (req.method === "GET" && req.url.split("?")[0] === "/version") {
+    const body = JSON.stringify(
+      {
+        commit: build.commit,
+        short: build.short,
+        built: build.built,
+        unstamped: build.unstamped === true || undefined,
+        wisp_js: wispJs.version,
+        node: process.version,
+      },
+      null,
+      1,
+    );
+    res.writeHead(200, {
+      "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(body),
+      "Cache-Control": "no-store",
+      // No CORS header on purpose. The page LINKS to this rather than
+      // fetching it, so the page's connect-src stays wss-and-self only;
+      // widening it to the relay's https origin would buy a nicer footer
+      // at the cost of the tightest claim the page makes.
+    });
+    res.end(body);
+    return;
+  }
   res.writeHead(426, { "Content-Type": "text/plain" });
   res.end("upgrade required\n");
 });
@@ -449,6 +520,8 @@ server.listen(PORT, HOST, () => {
     allowlist: ALLOWED_HOSTS.map(String),
     address_map: Object.fromEntries(ADDRESS_MAP),
     limits: LIMITS,
+    commit: build.commit,
+    unstamped: build.unstamped === true || undefined,
     wisp_js: wispJs.version,
     client_ip_source: TRUST_PROXY
       ? "x-forwarded-for last hop when the socket is loopback, else socket"
