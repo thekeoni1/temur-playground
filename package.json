@@ -1,15 +1,15 @@
 {
-  "name": "temur-playground",
+  "name": "temur-sandbox",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "temur, the 32-bit AI agent, running inside a v86 emulated Linux guest in the browser. The page, the guest images and the build harness.",
+  "license": "MIT",
+  "private": true,
   "type": "module",
+  "scripts": {
+    "stage": "sh tools/stage-page.sh",
+    "serve": "node tools/serve-page.mjs 8088",
+    "relay": "node relay/relay.mjs"
+  },
   "dependencies": {
     "@mercuryworkshop/wisp-js": "0.4.1",
     "@xterm/xterm": "6.0.0",

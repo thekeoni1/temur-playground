@@ -23,7 +23,7 @@ reports/P3a-fix.md.
 Two processes, in two terminals, from /home/dev/temur-playground:
 
     export PATH="$HOME/.local/opt/node-v24.20.0-linux-x64/bin:$PATH"
-    node tools/relay.mjs            # the WISP relay, 127.0.0.1:8089
+    node relay/relay.mjs             # the WISP relay, 127.0.0.1:8089
     node tools/serve-page.mjs 8088  # the page, 127.0.0.1:8088
 
 Then open a real browser on the laptop at:

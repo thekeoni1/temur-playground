@@ -1,0 +1,22 @@
+{
+  "name": "temur-sandbox-relay",
+  "version": "1.0.0",
+  "description": "WISP relay for the temur browser sandbox: a dumb pipe to an allowlist of AI provider endpoints, connection-level logging only.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "private": true,
+  "main": "relay.mjs",
+  "scripts": {
+    "start": "node relay.mjs",
+    "probe": "node relay-probe.mjs",
+    "probe:limits": "node relay-limit-probe.mjs",
+    "probe:proxy": "node relay-proxy-probe.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@mercuryworkshop/wisp-js": "0.4.1",
+    "ws": "8.21.3"
+  }
+}

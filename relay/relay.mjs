@@ -13,29 +13,155 @@
 // connection metadata (conn id, hostname, port, close reason) and none
 // prints payload, including at debug level.
 //
-// LOCAL ONLY in P3a: binds 127.0.0.1 and nothing else. The listen address
-// is a knob solely so P3b can be reviewed and authorized separately; it
-// is not a public server today.
+// BIND ADDRESS. Defaults to 127.0.0.1. In the deployed shape it stays on
+// 127.0.0.1 and Caddy terminates TLS in front of it; see relay/README.md.
+//
+// LICENSING. This directory is AGPL-3.0-only, because wisp-js is, and
+// this relay is a derived work that runs as a network service. See
+// relay/LICENSE and relay/README.md; the rest of the repository is MIT.
 import http from "http";
+import fs from "fs";
+import path from "path";
+import { createRequire } from "module";
+import { pathToFileURL } from "url";
 import { server as wisp } from "@mercuryworkshop/wisp-js/server";
 
+// --- the one deep import, asserted -----------------------------------
+//
 // NodeTCPSocket is the socket adapter wisp-js is designed to let you swap
 // (ServerConnection takes a TCPSocket in its options), but the package's
 // exports map only publishes ".", "./client" and "./server", so the class
-// itself is not importable by package name. Reached by a repo-relative
-// file URL instead. This is NOT a fork or a patch: the file is the pinned
+// itself is not importable by package name. It is reached by file path
+// instead: UNPUBLISHED INTERNALS, deliberately, and the only such reach
+// in this program. This is NOT a fork or a patch; the file is the pinned
 // package's own, unmodified, and only the documented injection point is
-// used. If a future bump moves this path the relay fails loudly at
-// startup rather than silently losing its byte accounting.
-const { NodeTCPSocket } = await import(
-  new URL(
-    "../node_modules/@mercuryworkshop/wisp-js/src/server/net.mjs",
-    import.meta.url,
-  ).href
-);
+// used.
+//
+// The package ROOT is resolved through Node's own algorithm rather than
+// by a hardcoded relative path, so this works whether wisp-js is
+// installed under relay/node_modules (the deployed shape, npm ci in this
+// directory) or hoisted to the repository root (the dev shape). The
+// version and the symbol are then ASSERTED, because an unpinned bump
+// that moved this file would otherwise cost the relay its byte
+// accounting silently.
+const WISP_JS_PIN = "0.4.1";
+const WISP_JS_PKG = "@mercuryworkshop/wisp-js";
+
+function resolveWispJs() {
+  const req = createRequire(import.meta.url);
+  let dir;
+  try {
+    dir = path.dirname(req.resolve(WISP_JS_PKG + "/server"));
+  } catch (e) {
+    throw new Error(
+      "relay: cannot resolve " + WISP_JS_PKG + " at all (run npm ci): " + e.message,
+    );
+  }
+  // The exports map does not publish "./package.json", so walk up from
+  // the resolved entry to the directory that owns it.
+  for (let i = 0; i < 8; i++) {
+    const pj = path.join(dir, "package.json");
+    if (fs.existsSync(pj)) {
+      const meta = JSON.parse(fs.readFileSync(pj, "utf8"));
+      if (meta.name === WISP_JS_PKG) return { root: dir, version: meta.version };
+    }
+    const up = path.dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  throw new Error("relay: resolved " + WISP_JS_PKG + " but found no package.json for it");
+}
+
+const wispJs = resolveWispJs();
+if (wispJs.version !== WISP_JS_PIN) {
+  console.error(
+    "relay: REFUSING TO START. " +
+      WISP_JS_PKG +
+      " resolved to version " +
+      wispJs.version +
+      ", but this relay reaches into its unpublished internals " +
+      "(src/server/net.mjs, NodeTCPSocket) and is pinned to exactly " +
+      WISP_JS_PIN +
+      ". Check relay/package.json, then re-read that file before " +
+      "moving the pin: the byte accounting and the per-host stream cap " +
+      "both live in a subclass of that class.",
+  );
+  process.exit(3);
+}
+
+const NET_MJS = path.join(wispJs.root, "src", "server", "net.mjs");
+let NodeTCPSocket;
+try {
+  ({ NodeTCPSocket } = await import(pathToFileURL(NET_MJS).href));
+} catch (e) {
+  console.error(
+    "relay: REFUSING TO START. " +
+      WISP_JS_PKG +
+      "@" +
+      WISP_JS_PIN +
+      " no longer has " +
+      NET_MJS +
+      ": " +
+      e.message,
+  );
+  process.exit(3);
+}
+if (typeof NodeTCPSocket !== "function") {
+  console.error(
+    "relay: REFUSING TO START. " +
+      NET_MJS +
+      " exists but exports no NodeTCPSocket class (got " +
+      typeof NodeTCPSocket +
+      "); the pin is " +
+      WISP_JS_PIN +
+      ".",
+  );
+  process.exit(3);
+}
 
 const PORT = Number(process.env.RELAY_PORT || 8089);
 const HOST = process.env.RELAY_HOST || "127.0.0.1";
+
+// --- who is the client? ----------------------------------------------
+//
+// The per-IP limits below are only worth anything if the IP is the
+// client's. Behind a TLS-terminating reverse proxy on the same host,
+// req.socket.remoteAddress is the PROXY (127.0.0.1) for every visitor,
+// so all of them share one bucket and the first few lock everyone else
+// out. That is not a hypothetical: it is the deployed shape.
+//
+// So: when RELAY_TRUST_PROXY=1 AND the connection actually arrives from
+// loopback, take the client from the LAST hop of X-Forwarded-For, which
+// is the one the proxy itself appended (anything a client puts in that
+// header lands earlier in the list and is ignored). Both conditions
+// matter. Off by default, because trusting that header on a directly
+// exposed socket would let any client pick its own rate-limit bucket.
+const TRUST_PROXY = process.env.RELAY_TRUST_PROXY === "1";
+
+function isLoopback(addr) {
+  return (
+    addr === "127.0.0.1" ||
+    addr === "::1" ||
+    addr === "::ffff:127.0.0.1" ||
+    (typeof addr === "string" && addr.startsWith("127."))
+  );
+}
+
+function clientIp(req) {
+  const socketIp = req.socket.remoteAddress || "unknown";
+  if (TRUST_PROXY && isLoopback(socketIp)) {
+    const xff = req.headers["x-forwarded-for"];
+    if (xff) {
+      const hops = String(xff)
+        .split(",")
+        .map((h) => h.trim())
+        .filter(Boolean);
+      const last = hops[hops.length - 1];
+      if (last) return { ip: last, source: "x-forwarded-for" };
+    }
+  }
+  return { ip: socketIp, source: "socket" };
+}
 
 // --- the allowlist ---------------------------------------------------
 //
@@ -106,7 +232,11 @@ Object.assign(wisp.options, {
   port_whitelist: [443], // TLS only; no cleartext destinations
   allow_direct_ip: true, // the mapped destinations ARE literal IPs
   allow_private_ips: true, // 192.0.2.0/24 is "reserved" to ipaddr.js
-  allow_loopback_ips: false, // no reaching back into the host
+  // No reaching back into the host. This is the one flag whose refusal
+  // is re-proven against the DEPLOYED relay: the deploy proof dials a
+  // loopback destination from inside the guest and shows it refused, on
+  // the public service rather than only on a laptop.
+  allow_loopback_ips: false,
   allow_udp_streams: false, // TCP only; UDP would be a DNS side channel
   allow_tcp_streams: true,
   stream_limit_total: LIMITS.streamsPerConnection,
@@ -280,16 +410,16 @@ const server = http.createServer((req, res) => {
 });
 
 server.on("upgrade", (req, socket, head) => {
-  const ip = req.socket.remoteAddress;
+  const { ip, source } = clientIp(req);
   const verdict = allowUpgrade(ip);
   if (!verdict.ok) {
-    logLine({ event: "upgrade_refused", ip, why: verdict.why });
+    logLine({ event: "upgrade_refused", ip, ip_source: source, why: verdict.why });
     socket.destroy();
     return;
   }
 
   live.set(ip, (live.get(ip) || 0) + 1);
-  logLine({ event: "ws_open", ip, live: live.get(ip) });
+  logLine({ event: "ws_open", ip, ip_source: source, live: live.get(ip) });
   socket.on("close", () => {
     live.set(ip, Math.max(0, (live.get(ip) || 1) - 1));
     logLine({ event: "ws_close", ip, live: live.get(ip) });
@@ -319,6 +449,10 @@ server.listen(PORT, HOST, () => {
     allowlist: ALLOWED_HOSTS.map(String),
     address_map: Object.fromEntries(ADDRESS_MAP),
     limits: LIMITS,
+    wisp_js: wispJs.version,
+    client_ip_source: TRUST_PROXY
+      ? "x-forwarded-for last hop when the socket is loopback, else socket"
+      : "socket",
     note: "connection-level logging only; payload is never logged",
   });
 });
