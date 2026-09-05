@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>temur in a browser (sandbox P2)</title>
+<link rel="stylesheet" href="vendor/xterm.css">
+<style>
+  /* Plumbing only. The page gets dressed in a later phase. */
+  body {
+    margin: 0;
+    background: #1a1a1a;
+    color: #ccc;
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  #wrap { padding: 12px; }
+  #status {
+    margin-bottom: 8px;
+    white-space: pre;
+    min-height: 3em;
+  }
+  #bar {
+    width: 640px; height: 6px; background: #333; margin: 4px 0 8px;
+  }
+  #bar > div { height: 100%; width: 0; background: #6a9; }
+  #term { width: max-content; }
+  .err { color: #e66; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="status">booting page...</div>
+  <div id="bar"><div></div></div>
+  <div id="term"></div>
+</div>
+<script src="vendor/xterm.js"></script>
+<script src="vendor/libv86.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

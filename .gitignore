@@ -4,3 +4,11 @@ build/state.bin
 build/*.cpio
 build/*.cpio.gz
 build/last-run.json
+
+# P2: regenerable, not committed.
+# Snapshots are large and rebuildable from the harness; page/vendor and
+# page/assets are copies of things pinned in package-lock.json and bios/.
+build/state*.bin
+build/page-selftest.json
+page/vendor/
+page/assets/

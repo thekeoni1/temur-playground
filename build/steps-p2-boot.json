@@ -1,0 +1,8 @@
+[
+ {"name": "uname", "cmd": "uname -a"},
+ {"name": "temur present", "cmd": "ls -l /usr/bin/temur"},
+ {"name": "AF_UNIX proof", "cmd": "ls -d /proc/net 2>&1; cat /proc/net/protocols 2>&1 | head -12"},
+ {"name": "loopback state", "cmd": "ip link 2>&1 | head -6; ifconfig -a 2>&1 | head -12"},
+ {"name": "temur --version", "cmd": "temur --version"},
+ {"name": "free", "cmd": "free -m"}
+]
