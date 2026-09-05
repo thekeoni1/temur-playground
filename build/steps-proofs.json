@@ -1,0 +1,6 @@
+[
+  {"name": "which temur", "cmd": "ls -l /usr/bin/temur"},
+  {"name": "temur --version", "cmd": "temur --version"},
+  {"name": "temur doctor", "cmd": "temur doctor 2>&1 | head -40"},
+  {"name": "free", "cmd": "free -m"}
+]

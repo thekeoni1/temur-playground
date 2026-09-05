@@ -1,0 +1,21 @@
+[
+ {
+  "name": "write config",
+  "cmd": "mkdir -p /root/.config/temur && printf '%s' '{\"provider\":\"openai-compat\",\"max_tokens\":4096,\"openai_compat\":{\"base_url\":\"http://127.0.0.1:8080/v1\",\"model\":\"local\",\"context_window\":8192}}' > /root/.config/temur/config.json && echo config-written"
+ },
+ {
+  "name": "set tty size",
+  "cmd": "stty rows 24 cols 80; echo size-set"
+ },
+ {
+  "name": "temur TUI, typed exit",
+  "raw": "TERM=xterm temur\n",
+  "waitMs": 6000,
+  "after": "exit\n",
+  "afterMs": 5000
+ },
+ {
+  "name": "prove shell is back",
+  "cmd": "echo BACK-AT-SHELL; ls /root/.local/state/temur/sessions 2>&1 | head -3"
+ }
+]

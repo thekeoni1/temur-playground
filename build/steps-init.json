@@ -1,0 +1,6 @@
+[
+  {"name": "temur init", "cmd": "temur init 2>&1 | head -20"},
+  {"name": "config exists", "cmd": "ls -l /root/.config/temur/config.json"},
+  {"name": "temur doctor after init", "cmd": "temur doctor 2>&1 | head -40"},
+  {"name": "tty check", "cmd": "tty; echo TERM=$TERM; stty size"}
+]

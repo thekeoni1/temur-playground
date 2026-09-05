@@ -1,0 +1,6 @@
+node_modules/
+build/*.log
+build/state.bin
+build/*.cpio
+build/*.cpio.gz
+build/last-run.json

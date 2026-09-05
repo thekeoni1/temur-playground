@@ -1,0 +1,14 @@
+[
+ {
+  "name": "tty size",
+  "cmd": "stty rows 24 cols 80; echo ok"
+ },
+ {
+  "name": "tui exit code",
+  "cmd": "TERM=xterm temur; echo TUI_EXIT=$?"
+ },
+ {
+  "name": "still alive",
+  "cmd": "echo SHELL-ALIVE"
+ }
+]

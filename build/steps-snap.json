@@ -1,0 +1,6 @@
+[
+ {
+  "name": "settle",
+  "cmd": "echo SNAPSHOT-POINT"
+ }
+]
