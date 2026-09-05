@@ -6,11 +6,21 @@ build/*.cpio.gz
 build/last-run.json
 
 # P2: regenerable, not committed.
-# Snapshots are large and rebuildable from the harness; page/vendor and
-# page/assets are copies of things pinned in package-lock.json and bios/.
+# Snapshots are large and rebuildable from the harness; page/vendor is a
+# copy of things pinned in package-lock.json and bios/.
 build/state*.bin
 build/page-selftest.json
 page/vendor/
-page/assets/
+
+# P3b decision C: the two SERVED snapshots ARE committed, so the
+# deployed site is built from the published commit rather than from a
+# blob uploaded beside it. Everything else under page/assets stays out.
+#
+# Note the shape: "page/assets/*" and not "page/assets/". git cannot
+# re-include a file whose PARENT DIRECTORY is excluded, so excluding the
+# directory itself would make the negation below silently do nothing.
+page/assets/*
+!page/assets/state-p5-page.bin.gz
+!page/assets/state-page.bin.gz
 page/build-info.js
 relay/build-info.json

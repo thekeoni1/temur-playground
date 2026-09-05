@@ -5,8 +5,8 @@
  "wizardAtFirstQuestion": true,
  "configPath": "/root/.config/temur/config.json",
  "relayWatch": "adapter-socket",
- "readyMs": 1594,
- "stampText": "build eb293e4 · relay source is AGPL-3.0; the repository link is set at deploy · relay /version",
+ "readyMs": 2235,
+ "stampText": "build 5bba9dd · source, relay included (AGPL-3.0) · relay /version",
  "pasteHint": "Paste with Ctrl+Shift+V. Plain Ctrl+V is not a paste in a terminal: it sends a control byte into the machine, and at the hidden key prompt you will not see that it did.",
  "relayWs": "ws://127.0.0.1:8089/",
  "relayWisp": "wisp://127.0.0.1:8089/"
