@@ -122,10 +122,22 @@ which P2 deliberately left off. Confirmed bound in the guest:
 
 Config diff P2 -> P3: 79 symbols gained, ZERO LOST. Seventy-two of those
 are bare NET_VENDOR_* menu gates with no driver under them, which is why
-79 new symbols cost only 20 KB. Exactly ONE driver is enabled:
+79 new symbols cost only 20 KB.
 
-    every =y that is not a bare vendor gate: CONFIG_NE2K_PCI=y
-    CONFIG_VIRTIO_PCI is not set
+The 79 break down as 72 bare vendor gates plus these 7:
+
+    CONFIG_NETDEVICES=y        subsystem gate
+    CONFIG_NET_CORE=y          subsystem gate
+    CONFIG_ETHERNET=y          subsystem gate
+    CONFIG_NE2K_PCI=y          THE ONE NIC DRIVER
+    CONFIG_NET_PTP_CLASSIFY=y  timestamping, pulled in behind the above
+    CONFIG_PPS=y               timestamping, pulled in behind the above
+    CONFIG_PTP_1588_CLOCK=y    timestamping, pulled in behind the above
+
+So exactly one NIC DRIVER is enabled, NE2K_PCI, and
+CONFIG_VIRTIO_PCI is not set. (An earlier draft said "the only
+non-vendor-gate =y is NE2K_PCI", which was loose: the six subsystem and
+timestamping symbols above are also =y. None of them is a driver.)
 
 CONFIG_PACKET is still off, deliberately: busybox udhcpc would need raw
 sockets for DHCP, so the guest is addressed statically instead
