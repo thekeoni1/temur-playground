@@ -23,8 +23,16 @@ reports/P3a-fix.md.
 Two processes, in two terminals, from /home/dev/temur-playground:
 
     export PATH="$HOME/.local/opt/node-v24.20.0-linux-x64/bin:$PATH"
+    node tools/stamp.mjs             # once, on a clean tree
     node relay/relay.mjs             # the WISP relay, 127.0.0.1:8089
-    node tools/serve-page.mjs 8088  # the page, 127.0.0.1:8088
+    PAGE_DEV_RELAY=ws://127.0.0.1:8089 \
+      node tools/serve-page.mjs 8088 # the page, 127.0.0.1:8088
+
+`tools/stamp.mjs` writes the commit stamp the relay refuses to start
+without. `PAGE_DEV_RELAY` widens the shipped Content-Security-Policy by
+exactly the local relay origin: the policy itself lives in page/_headers
+and ships as written, and without that variable the browser would refuse
+the connection to 127.0.0.1.
 
 Then open a real browser on the laptop at:
 

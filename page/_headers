@@ -1,0 +1,18 @@
+# Cloudflare Pages _headers. THIS FILE IS THE CSP AS SHIPPED.
+#
+# It is the one place the policy is written. tools/serve-page.mjs reads
+# this same file for local serving, so what a laptop sees and what the
+# deployed site sends cannot drift apart. The local relay address is NOT
+# written here: it arrives as an env override at serve time
+# (PAGE_DEV_RELAY), so the shipped policy is never edited to make a
+# development loop work.
+#
+# Pages consumes this file from the output directory and does not serve
+# it as content.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: same-origin
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' wss://relay.temur.live; worker-src 'self' blob:; child-src 'self' blob:; img-src 'self' data:; base-uri 'none'; form-action 'none'
