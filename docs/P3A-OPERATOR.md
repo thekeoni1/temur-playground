@@ -30,9 +30,15 @@ exists, and the page is not allowed to be in the key path.
 
 ## Step 1: your key
 
-At the guest shell, run:
+At the guest shell, run it BY FULL PATH:
 
-    temur-setkey
+    /usr/local/bin/temur-setkey
+
+The bare name does NOT work. The rootfs sets
+PATH="/bin:/sbin:/usr/bin:/usr/sbin", which does not include
+/usr/local/bin, so `temur-setkey` gives "-sh: temur-setkey: not found".
+That is a defect in the snapshot, recorded in reports/P3a.md; the full
+path is the workaround until a new keyless snapshot can be built.
 
 It prompts once. Terminal echo is OFF, so the key does not appear on
 screen. It writes the key mode 0600 to /root/.config/temur/key INSIDE the
@@ -68,7 +74,8 @@ error in the TUI, not hang:
     temur
     (ask it anything; observe the error; then `exit`)
 
-Then put your real key back with `temur-setkey` if you want to continue.
+Then put your real key back with `/usr/local/bin/temur-setkey` if you
+want to continue.
 
 FAILURE PATH B, relay down. Stop the relay process in its terminal
 (Ctrl-C), then in the still-open browser tab:

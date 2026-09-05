@@ -309,6 +309,53 @@ full script: the real turn, the bash tool call, and the two failure paths
 lists what must not run while a key exists, notably the serial-logging
 harnesses and the two page query parameters.
 
+## KNOWN DEFECT: temur-setkey is not on the guest PATH
+
+FOUND LIVE BY THE OPERATOR, 2026-09-05, during the keyed run. NOT FIXED
+at the time of writing: fixing it means building a new keyless snapshot,
+and a snapshot must not be taken while a keyed tab is open, because it
+would capture the operator's key in the guest's memory image.
+
+Symptom, at the guest shell:
+
+    -sh: temur-setkey: not found
+
+Cause, verified from primaries on both sides:
+  - tools/gen-steps-p3-page-snap.mjs bakes the helper to
+    /usr/local/bin/temur-setkey;
+  - the rootfs's own /etc/profile (inside kit/rootfs.cpio.gz, read
+    straight out of the newc archive) sets
+        export PATH="/bin:/sbin:/usr/bin:/usr/sbin"
+    which does NOT include /usr/local/bin.
+So the helper exists and is executable, but its bare name resolves to
+nothing.
+
+WORKAROUND, in docs/P3A-OPERATOR.md now: invoke it by full path,
+/usr/local/bin/temur-setkey. Nothing else about the keyed flow changes.
+
+HOW I MISSED IT, recorded because the failure is instructive. The
+snapshot step that "verified" the helper ran
+`head -3 /usr/local/bin/temur-setkey` - by FULL PATH. That confirmed the
+file existed and was written correctly, and would have passed no matter
+what PATH contained. I verified the artifact and never once verified the
+command I had told the operator to type. A check that cannot fail the way
+the documented step fails is not a check of that step.
+
+FIX CANDIDATES for the next keyless snapshot, none applied, desktop to
+rule:
+  a. bake the helper to /usr/bin instead of /usr/local/bin, so it lands
+     on the PATH the rootfs already sets;
+  b. or prepend /usr/local/bin to PATH in /root/.profile, alongside the
+     APP_SECRET_FILE export that is already written there;
+  c. and, either way, add a snapshot step that actually RUNS the helper
+     by bare name against empty input. It exits 1 on an empty line
+     without writing anything, so that is safe and stays keyless, and it
+     would make a recurrence of "not found" impossible to miss - it is
+     the check that (b) above should have been.
+
+(a) is the smaller change; (b) keeps the helper out of the distro's own
+bin directory. Both want (c).
+
 ## What fought back
 
 THE KICKOFF'S DNS PLAN, covered at the top. The largest finding of the
