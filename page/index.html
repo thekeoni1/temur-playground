@@ -18,6 +18,15 @@
   #bar { width: 640px; height: 6px; background: #333; margin: 4px 0 8px; }
   #bar > div { height: 100%; width: 0; background: #6a9; }
   #term { width: max-content; }
+  #pastehint { margin: 6px 0 0; color: #999; font-size: 12px; }
+  #pastehint kbd {
+    font: inherit;
+    color: #ccc;
+    background: #303030;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 0 4px;
+  }
   .err { color: #e66; }
   .notice {
     padding: 8px 10px;
@@ -56,15 +65,21 @@
   <div id="status">booting page...</div>
   <div id="bar"><div></div></div>
   <div id="term"></div>
+  <p id="pastehint">
+    Paste with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>. Plain
+    <kbd>Ctrl</kbd>+<kbd>V</kbd> is not a paste in a terminal: it sends a
+    control byte into the machine, and at the hidden key prompt you will
+    not see that it did.
+  </p>
 
   <div id="trust">
     <h2>Where your key goes <span class="draft">[DRAFT - pending review]</span></h2>
     <p>
       This page runs a small Linux computer inside your browser. When you
-      type an API key, you are typing it into that computer, not into this
-      web page: there is no key box on this page, and the page never reads
-      what you type into the terminal. Your key stays in that computer's
-      memory.
+      type an API key, you are typing it into that computer, at the setup
+      wizard's own hidden prompt, not into this web page: there is no key
+      box on this page, and the page never reads what you type into the
+      terminal. Your key stays in that computer's memory.
     </p>
     <p>
       Requests to your AI provider are encrypted inside that computer
@@ -72,6 +87,13 @@
       which provider you are contacting and how many bytes moved. The
       relay cannot read your key, your prompts, or the replies, and it can
       only reach the handful of AI providers on its allowlist.
+    </p>
+    <p>
+      You do not have to take that on trust. The relay's source is
+      published under the AGPL and linked at the bottom of this page, and
+      both the page and the relay show the exact commit they were built
+      from, so what is running here can be checked against what is
+      published.
     </p>
     <p>
       Nothing is stored. Close or reload this tab and the computer, its
