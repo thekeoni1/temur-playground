@@ -1,0 +1,8 @@
+[
+ { "name": "keyless hosted config, key path pointed at but NOT created",
+   "cmd": "mkdir -p /root/.config/temur && printf '%s' '{\"provider\":\"anthropic\",\"max_tokens\":4096,\"base_url\":\"https://api.anthropic.com\",\"model\":\"claude-sonnet-5\"}' > /root/.config/temur/config.json && export APP_SECRET_FILE=/root/.config/temur/key && ls -l /root/.config/temur/key 2>&1; echo config-written" },
+ { "name": "kernel user namespace support as the kernel reports it",
+   "cmd": "cat /proc/sys/user/max_user_namespaces 2>&1; grep -c CONFIG_USER_NS /proc/config.gz 2>/dev/null; echo checked" },
+ { "name": "doctor: the bash key sandbox line",
+   "cmd": "export APP_SECRET_FILE=/root/.config/temur/key; temur doctor 2>&1 | grep -i 'key sandbox\\|key isolation'" }
+]
