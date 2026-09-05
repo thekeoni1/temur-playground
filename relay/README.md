@@ -61,8 +61,9 @@ any client could choose its own bucket by sending the header. Both
 conditions are checked; the source actually used is printed in the
 `relay_start` line and on every connection line.
 
-The deployment runbook (systemd unit, Caddyfile, update procedure) is in
-`reports/P3b-prep.md` in this repository.
+The deployment runbook (systemd unit, Caddyfile, update procedure) is
+`docs/VPS-RUNBOOK.md` in this repository, and is reproduced in
+`reports/P3b-prep.md`.
 
 ## Its test suite
 
