@@ -10,8 +10,25 @@
 # Keeping the pins in the lockfile rather than in copied blobs means there
 # is exactly one place a version can be wrong.
 #
-# Usage: sh tools/stage-page.sh
+# Usage: sh tools/stage-page.sh [--vendor-only]
+#
+# --vendor-only copies the vendored libraries and BIOS blobs and does NOT
+# touch page/assets. That is the mode a Cloudflare Pages build runs in:
+# the Pages builder has node and this repository, but not the v86
+# harness, the kernel tree or the multi-gigabyte build directory, so it
+# cannot regenerate a snapshot and must not try. The snapshots reach the
+# deployed site by whichever route the operator rules on (committed .gz
+# files, or a direct upload); either way this script's vendor half is the
+# only part a Pages build needs.
 set -e
+
+VENDOR_ONLY=no
+for arg in "$@"; do
+  case "$arg" in
+    --vendor-only) VENDOR_ONLY=yes ;;
+    *) echo "unknown argument: $arg" >&2; exit 2 ;;
+  esac
+done
 
 cd "$(dirname "$0")/.."
 
@@ -28,6 +45,12 @@ cp node_modules/@xterm/xterm/lib/xterm.js page/vendor/
 cp node_modules/@xterm/xterm/css/xterm.css page/vendor/
 cp bios/seabios.bin page/vendor/
 cp bios/vgabios.bin page/vendor/
+
+if [ "$VENDOR_ONLY" = yes ]; then
+  echo "staged page/vendor only (--vendor-only); page/assets left alone"
+  ls -l page/vendor
+  exit 0
+fi
 
 # The networked tier is the P3b snapshot (bzImage-p4 plus the overlay that
 # fixes ICRNL at the console and carries no baked config, so the guest can
