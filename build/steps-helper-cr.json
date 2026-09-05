@@ -1,0 +1,11 @@
+[
+ { "name": "termios before the helper", "cmd": "stty -g" },
+ { "name": "run the helper and press Enter as a real terminal does",
+   "raw": "temur-setkey\n", "waitMs": 1800,
+   "after": "NOT-A-REAL-KEY-0123456789\r", "afterMs": 2000 },
+ { "name": "the value landed exactly, with no CR and mode 600",
+   "cmd": "SZ=`wc -c < /root/.config/temur/key`; V=`cat /root/.config/temur/key`; echo size=$SZ; ls -l /root/.config/temur/key; [ \"$V\" = \"NOT-A-REAL-KEY-0123456789\" ] && [ \"$SZ\" = 25 ] && echo CR-PROOF-OK" },
+ { "name": "no stray CR byte in the file", "cmd": "od -c /root/.config/temur/key | head -3; od -c /root/.config/temur/key | grep -c '\\\\r' ; echo checked", "expectNonzero": true },
+ { "name": "termios restored after the helper", "cmd": "stty -g" },
+ { "name": "remove the throwaway value", "cmd": "rm -f /root/.config/temur/key && ls -l /root/.config/temur/key 2>&1; echo removed" }
+]

@@ -35,6 +35,17 @@ def main(out_path, entries):
     print("wrote %s (%d bytes)" % (out_path, len(blob)))
 
 if __name__ == "__main__":
+    # mkcpio.py <out.cpio> <temur-binary> [<guest/path>=<host/path> ...]
+    #
+    # Extra files go to /usr/bin, which the rootfs /etc/profile already has
+    # on PATH ("/bin:/sbin:/usr/bin:/usr/sbin"). The P3a snapshot tried to
+    # write its key helper into /usr/local/bin, which does not exist in this
+    # rootfs, so nothing was created; packing the file here instead means the
+    # helper cannot depend on a directory that is not there.
     out = sys.argv[1]
     binary = sys.argv[2]
-    main(out, [("d", "usr", None), ("d", "usr/bin", None), ("f", "usr/bin/temur", binary)])
+    entries = [("d", "usr", None), ("d", "usr/bin", None), ("f", "usr/bin/temur", binary)]
+    for arg in sys.argv[3:]:
+        guest_path, host_path = arg.split("=", 1)
+        entries.append(("f", guest_path, host_path))
+    main(out, entries)

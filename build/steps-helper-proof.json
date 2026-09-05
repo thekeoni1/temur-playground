@@ -1,0 +1,8 @@
+[
+ { "name": "PATH as the rootfs profile sets it", "cmd": "echo PATH=$PATH" },
+ { "name": "helper resolves BY BARE NAME", "cmd": "command -v temur-setkey && ls -l /usr/bin/temur-setkey" },
+ { "name": "the documented command, empty input: exits 1 and writes nothing",
+   "cmd": "temur-setkey </dev/null; RC=$?; echo helper-rc=$RC; ls -l /root/.config/temur/key 2>&1; [ \"$RC\" = 1 ] && [ ! -e /root/.config/temur/key ] && echo PROOF-OK" },
+ { "name": "no /usr/local anywhere, which is what the old recipe assumed",
+   "cmd": "ls -d /usr/local 2>&1; echo checked" }
+]

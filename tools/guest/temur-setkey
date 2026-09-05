@@ -1,0 +1,69 @@
+#!/bin/sh
+# Write an API key to the path temur reads it from, without ever echoing
+# it and without any Claude session seeing it.
+#
+# This is a REAL FILE in the repo, packed into the guest overlay at
+# /usr/bin/temur-setkey by tools/mkcpio.py. The P3a snapshot tried to
+# create it inside the guest with a printf redirect into /usr/local/bin,
+# which does not exist in the rootfs, so the file was never created and
+# the failure went unnoticed because the step sentinel ignored exit
+# status. Both halves of that are fixed: the helper ships as a file, and
+# the sentinel now carries the exit status.
+#
+# THE CR FIX. The guest serial console comes up with ICRNL off (measured
+# from first boot: iflag 0x1400). busybox ash's line editor reads CR
+# itself, so ordinary command lines are unaffected, but the `read`
+# builtin goes through the kernel line discipline, where CR is only a
+# line terminator if ICRNL translates it. Without this, pressing Enter
+# did nothing, and if the user then pressed Ctrl-J the CR was still
+# sitting in the buffer and became part of the value: the key file would
+# silently gain a trailing CR and every request would fail
+# authentication. So: turn ICRNL on for the read, and strip a trailing CR
+# anyway as a belt-and-braces measure.
+#
+# The terminal state is saved first and restored on every exit path,
+# including an interrupt, so an abandoned run cannot leave the console
+# with echo off and look dead.
+
+KEYFILE=/root/.config/temur/key
+
+SAVED=`stty -g 2>/dev/null`
+restore() {
+    [ -n "$SAVED" ] && stty "$SAVED" 2>/dev/null
+}
+trap 'restore; echo; echo "cancelled; nothing written"; exit 130' INT HUP TERM
+
+mkdir -p "`dirname "$KEYFILE"`" || exit 1
+
+printf 'Paste your API key, then press Enter (input is hidden): '
+stty icrnl -echo 2>/dev/null
+read -r K
+STATUS=$?
+restore
+echo
+
+if [ "$STATUS" -ne 0 ] || [ -z "$K" ]; then
+    echo "no key entered; nothing written"
+    K=
+    exit 1
+fi
+
+# Strip one trailing CR if the line discipline still handed us one.
+CR=`printf '\r'`
+K=${K%"$CR"}
+
+if [ -z "$K" ]; then
+    echo "no key entered; nothing written"
+    exit 1
+fi
+
+umask 077
+printf '%s' "$K" > "$KEYFILE" || { K=; echo "could not write $KEYFILE"; exit 1; }
+chmod 600 "$KEYFILE"
+K=
+
+SIZE=`wc -c < "$KEYFILE"`
+MODE=`ls -l "$KEYFILE" | cut -c1-10`
+# Size and mode only. The contents are never printed.
+echo "key written to $KEYFILE ($SIZE bytes, $MODE)"
+echo "now run: temur"
