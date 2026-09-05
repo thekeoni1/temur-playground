@@ -11,6 +11,18 @@
 // would also hand the relay bare IPs instead of hostnames, defeating a
 // hostname allowlist.
 //
+//
+// SENTINEL RULE (P3a fix pass, item 2). The sentinel CARRIES THE STEP'S
+// EXIT STATUS and the judge fails the run on a nonzero one. Before this,
+// the sentinel was joined with ";" and printed no matter how the command
+// ended, so "step done" never meant "step worked": that is how a snapshot
+// step whose only job was to create a file was recorded as passing while
+// the shell was printing "nonexistent directory". $? is captured FIRST,
+// before the blank echo can clobber it. The marker is split in the typed
+// text ("STEP_0''_DONE") so the shell's echo of the command line can never
+// satisfy the judge's regex, even when the line wraps at 80 columns. A
+// step that is SUPPOSED to fail sets "expectNonzero": true.
+//
 // Usage: node tools/run-guest-net.mjs <bzImage> <initrd> <steps.json> [memMB] [relayUrl] [saveTo]
 import { V86 } from "v86";
 import fs from "fs";
@@ -66,7 +78,12 @@ function nextStep() {
   if (step.raw) {
     send(step.raw);
   } else {
-    send(step.cmd + "; echo; echo STEP_" + idx + "_DONE\n");
+    send(
+        step.cmd +
+            "; STEP_RC=$?; echo; echo STEP_" +
+            idx +
+            "''_DONE RC=$STEP_RC\n",
+    );
   }
   if (step.waitMs) {
     setTimeout(() => {
@@ -103,14 +120,23 @@ emulator.add_listener("serial0-output-byte", (byte) => {
   if (stage === "prompt" && idx >= 0 && idx < steps.length) {
     const step = steps[idx];
     if (step.waitMs || step._done) return;
-    const re = new RegExp("^STEP_" + idx + "_DONE\\s*$", "m");
-    if (re.test(out.slice(step._mark))) {
+    const re = new RegExp("^STEP_" + idx + "_DONE RC=(\\d+)\\s*$", "m");
+    const rcm = out.slice(step._mark).match(re);
+    if (rcm) {
       step._done = true;
+      const rc = Number(rcm[1]);
       results.push({
         name: step.name,
         ms: Date.now() - stepStart,
         out: out.slice(step._mark),
+        rc,
       });
+      if (rc !== 0 && !step.expectNonzero) {
+        return finish(
+          1,
+          "STEP FAILED: " + JSON.stringify(step.name) + " exited " + rc,
+        );
+      }
       setTimeout(nextStep, 200);
     }
   }
@@ -120,7 +146,9 @@ async function finish(code, verdict) {
   console.log("\n\n=== " + verdict + " ===");
   console.log("boot_to_prompt_ms: " + bootReadyAt);
   for (const r of results)
-    console.log("step " + JSON.stringify(r.name) + ": " + r.ms + " ms");
+    console.log(
+    "step " + JSON.stringify(r.name) + ": " + r.ms + " ms rc=" + r.rc,
+  );
   if (saveTo) {
     const state = await emulator.save_state();
     fs.writeFileSync(saveTo, Buffer.from(state));

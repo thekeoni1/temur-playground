@@ -1,0 +1,6 @@
+[
+ { "name": "a step that works", "cmd": "echo alpha" },
+ { "name": "a step that is SUPPOSED to fail", "cmd": "ls /no/such/path 2>&1", "expectNonzero": true },
+ { "name": "the P3a bug shape: redirect into a missing directory", "cmd": "printf 'x' > /usr/local/bin/temur-setkey && echo helper-written" },
+ { "name": "MUST NEVER RUN", "cmd": "echo THIS_STEP_SHOULD_NOT_HAVE_RUN" }
+]
