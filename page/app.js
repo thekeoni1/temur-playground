@@ -22,7 +22,7 @@ const MEM_MB = 128;
 const RELAY_WISP = "wisp://127.0.0.1:8089/";
 const RELAY_WS = "ws://127.0.0.1:8089/";
 
-const SNAP_ONLINE = "assets/state-p3-page.bin.gz";
+const SNAP_ONLINE = "assets/state-p4-page.bin.gz";
 const SNAP_OFFLINE = "assets/state-page.bin.gz";
 
 // Networking does not survive restore_state: the guest kernel's interface
@@ -42,6 +42,7 @@ const LAUNCH = "TERM=xterm temur\n";
 const statusEl = document.getElementById("status");
 const barEl = document.querySelector("#bar > div");
 const noticeEl = document.getElementById("notice");
+const bannerEl = document.getElementById("relaybanner");
 
 let lastEcho = null;
 const pending = [];
@@ -135,6 +136,82 @@ async function fetchState(url) {
     .pipeThrough(new DecompressionStream("gzip"));
   const buf = await new Response(stream).arrayBuffer();
   return { buf, wire: got };
+}
+
+// --- relay loss, told plainly --------------------------------------
+//
+// v86 gives no event for this. Its wisp adapter sets wispws.onclose to
+// setTimeout(() => this.register_ws(url), 10000) and retries forever in
+// silence, so with the relay gone the guest sits on a connection that was
+// accepted in-page and will never answer. The operator sees a spinner and
+// nothing else, which is what happened during the keyed run.
+//
+// Of the two ways to notice, this watches THE ACTUAL SOCKET the guest's
+// traffic uses, by polling its readyState rather than by hooking onclose.
+// Polling was the deliberate choice: v86 owns that handler and uses it to
+// reconnect, so chaining onto it risks breaking the reconnect, and
+// re-reading adapter.wispws every tick follows each new socket for free.
+// A separate monitor websocket would have been easier but could disagree
+// with the guest's real link, and it would spend one of the relay's
+// per-IP connection slots. It stays here only as the fallback for a v86
+// build whose adapter this cannot find.
+function findWispAdapter(emulator) {
+  const candidates = [emulator.network_adapter, emulator.v86 && emulator.v86.network_adapter];
+  for (const c of candidates) if (c && "wispws" in c) return c;
+  return null;
+}
+
+function watchRelay(emulator) {
+  const state = { mode: "none", up: true };
+
+  function lost() {
+    if (!state.up) return;
+    state.up = false;
+    bannerEl.textContent =
+      "Relay connection lost. Requests from the guest will HANG rather " +
+      "than fail: the connection was accepted inside this page before the " +
+      "relay went away, so nothing tells the guest it is gone. Restart the " +
+      "relay and this notice clears, or reload to run the offline tier.";
+    const btn = document.createElement("button");
+    btn.textContent = "reload for the offline tier";
+    btn.onclick = () => location.reload();
+    bannerEl.appendChild(document.createElement("br"));
+    bannerEl.appendChild(btn);
+    bannerEl.hidden = false;
+  }
+  function back() {
+    if (state.up) return;
+    state.up = true;
+    bannerEl.textContent = "";
+    bannerEl.hidden = true;
+  }
+
+  const adapter = findWispAdapter(emulator);
+  if (adapter) {
+    state.mode = "adapter-socket";
+    setInterval(() => {
+      const ws = adapter.wispws;
+      if (ws && ws.readyState === WebSocket.OPEN) back();
+      else lost();
+    }, 1000);
+  } else {
+    // Fallback only: costs one of the relay's per-IP websocket slots.
+    state.mode = "monitor-socket";
+    let mon = null;
+    const open = () => {
+      try {
+        mon = new WebSocket(RELAY_WS);
+      } catch (e) {
+        lost();
+        return;
+      }
+      mon.onopen = () => back();
+      mon.onclose = () => { lost(); setTimeout(open, 3000); };
+      mon.onerror = () => lost();
+    };
+    open();
+  }
+  return state;
 }
 
 // --- boot -------------------------------------------------------------
@@ -273,6 +350,7 @@ async function main() {
             readyMs: totalMs,
           };
           if (networked) {
+            window.__p3.relayWatch = watchRelay(emulator).mode;
             noticeEl.textContent =
               "Networked tier. You are at the guest shell. Run  temur-setkey  " +
               "to enter your API key (input is hidden, it is written only " +
@@ -305,6 +383,12 @@ async function main() {
           // connection log, which never contains payload.
           if (q.has("netcheck") && networked) {
             netcheck(send);
+          }
+          // relaycheck proves the relay-loss banner. It reads the BANNER,
+          // never the terminal buffer, so unlike the self-test it carries
+          // no way to leak a key even if one existed.
+          if (q.has("relaycheck") && networked) {
+            relaycheck();
           }
         },
         networked ? 900 : 300,
@@ -395,6 +479,14 @@ async function netcheck(send) {
         mode: "netcheck",
         tier: "networked",
         tuiReadyMs: tuiReadyMs,
+        // Page timings only. No terminal content leaves this function
+        // except the one matched reachability line.
+        wireBytes: window.__p3 && window.__p3.wireBytes,
+        stateBytes: window.__p3 && window.__p3.stateBytes,
+        fetchMs: window.__p3 && window.__p3.fetchMs,
+        restoreMs: window.__p3 && window.__p3.restoreMs,
+        readyMs: window.__p3 && window.__p3.readyMs,
+        relayWatch: window.__p3 && window.__p3.relayWatch,
         line: m ? m[0].trim() : "(no reachability line found)",
       },
       null,
@@ -402,4 +494,54 @@ async function netcheck(send) {
     ),
   });
   status("netcheck posted");
+}
+
+// --- relaycheck -------------------------------------------------------
+//
+// Watches for the relay-loss banner and posts what it saw. It reads only
+// window.__p3 and the banner's own text, never the terminal, so it is
+// safe by construction rather than by instruction. The operator kills the
+// relay while this is waiting.
+async function relaycheck() {
+  const t0 = performance.now();
+  let seen = null;
+  let cleared = null;
+  const appearBy = t0 + 60000;
+  while (performance.now() < appearBy && !seen) {
+    if (!bannerEl.hidden) {
+      seen = {
+        atMs: Math.round(performance.now() - t0),
+        text: bannerEl.textContent.slice(0, 400),
+        hasReloadButton: !!bannerEl.querySelector("button"),
+      };
+    }
+    await wait(500);
+  }
+  // Second half: the operator restarts the relay and the banner must go
+  // away on its own, or the notice is a one-way trap.
+  if (seen) {
+    const clearBy = performance.now() + 90000;
+    while (performance.now() < clearBy && !cleared) {
+      if (bannerEl.hidden) cleared = { atMs: Math.round(performance.now() - t0) };
+      await wait(500);
+    }
+  }
+  await fetch("/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      {
+        mode: "relaycheck",
+        tier: "networked",
+        relayWatch: window.__p3 && window.__p3.relayWatch,
+        bannerShown: !!seen,
+        banner: seen,
+        bannerCleared: !!cleared,
+        clearedAt: cleared,
+      },
+      null,
+      1,
+    ),
+  });
+  status("relaycheck: banner " + (seen ? "appeared" : "MISSING") + ", cleared " + (cleared ? "yes" : "no"));
 }

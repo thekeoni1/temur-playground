@@ -27,6 +27,8 @@
   }
   .notice.ok { border-left-color: #6a9; }
   .notice.warn { border-left-color: #da4; color: #eca; }
+  .notice.bad { border-left-color: #d55; color: #f3c9c9; background: #2a1414; }
+  .notice.bad button { margin-top: 6px; font: inherit; padding: 2px 8px; }
   #trust {
     margin: 14px 0 0;
     padding: 10px 12px;
@@ -44,6 +46,7 @@
 <body>
 <div id="wrap">
   <div id="notice" class="notice">starting...</div>
+  <div id="relaybanner" class="notice bad" hidden></div>
   <div id="status">booting page...</div>
   <div id="bar"><div></div></div>
   <div id="term"></div>
