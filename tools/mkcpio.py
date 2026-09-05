@@ -19,13 +19,13 @@ def pad4(n):
 def main(out_path, entries):
     blob = b""
     ino = 1000
-    for kind, name, src in entries:
+    for kind, name, src, mode in entries:
         if kind == "d":
-            h = header(name, 0o040755, 0, ino, nlink=2)
+            h = header(name, 0o040000 | mode, 0, ino, nlink=2)
             blob += h + pad4(len(h))
         else:
             data = open(src, "rb").read()
-            h = header(name, 0o100755, len(data), ino)
+            h = header(name, 0o100000 | mode, len(data), ino)
             blob += h + pad4(len(h)) + data + pad4(len(data))
         ino += 1
     t = header("TRAILER!!!", 0, 0, 0)
@@ -34,18 +34,40 @@ def main(out_path, entries):
     open(out_path, "wb").write(blob)
     print("wrote %s (%d bytes)" % (out_path, len(blob)))
 
+def add_file(entries, seen, guest_path, host_path, mode):
+    """Append the file, creating every ancestor directory first.
+
+    The directories are emitted even when the stock rootfs already has
+    them. The kernel's initramfs unpacker ignores EEXIST on mkdir and then
+    chowns/chmods to root:root 0755, which is what those directories
+    already are, so this is free; and it is the P3a lesson made
+    structural. The key helper was written into /usr/local/bin, a path
+    this rootfs does not have, so nothing was created and no step noticed.
+    An overlay that carries its own directories cannot fail that way.
+    """
+    parts = guest_path.split("/")
+    for i in range(1, len(parts)):
+        d = "/".join(parts[:i])
+        if d not in seen:
+            seen.add(d)
+            entries.append(("d", d, None, 0o755))
+    entries.append(("f", guest_path, host_path, mode))
+
 if __name__ == "__main__":
-    # mkcpio.py <out.cpio> <temur-binary> [<guest/path>=<host/path> ...]
+    # mkcpio.py <out.cpio> <temur-binary> [<guest/path>=<host/path>[:<mode>] ...]
     #
-    # Extra files go to /usr/bin, which the rootfs /etc/profile already has
-    # on PATH ("/bin:/sbin:/usr/bin:/usr/sbin"). The P3a snapshot tried to
-    # write its key helper into /usr/local/bin, which does not exist in this
-    # rootfs, so nothing was created; packing the file here instead means the
-    # helper cannot depend on a directory that is not there.
+    # Extra files name their own guest path, with an optional octal mode
+    # (default 0755). Ancestor directories are emitted automatically.
     out = sys.argv[1]
     binary = sys.argv[2]
-    entries = [("d", "usr", None), ("d", "usr/bin", None), ("f", "usr/bin/temur", binary)]
+    entries = []
+    seen = set()
+    add_file(entries, seen, "usr/bin/temur", binary, 0o755)
     for arg in sys.argv[3:]:
         guest_path, host_path = arg.split("=", 1)
-        entries.append(("f", guest_path, host_path))
+        mode = 0o755
+        if ":" in host_path:
+            host_path, mode_s = host_path.rsplit(":", 1)
+            mode = int(mode_s, 8)
+        add_file(entries, seen, guest_path, host_path, mode)
     main(out, entries)

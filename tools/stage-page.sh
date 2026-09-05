@@ -29,14 +29,16 @@ cp node_modules/@xterm/xterm/css/xterm.css page/vendor/
 cp bios/seabios.bin page/vendor/
 cp bios/vgabios.bin page/vendor/
 
-# The networked tier is the P3a-fix snapshot (bzImage-p4 plus the overlay
-# that actually contains temur-setkey). The P3a one stays on disk as the
-# record of what the keyed run used; it is simply no longer served.
-if [ -f build/state-p4-page.bin ]; then
-  gzip -9 -c build/state-p4-page.bin > page/assets/state-p4-page.bin.gz
-  echo "staged page/assets/state-p4-page.bin.gz (networked tier)"
+# The networked tier is the P3b snapshot (bzImage-p4 plus the overlay that
+# fixes ICRNL at the console and carries no baked config, so the guest can
+# land at temur's own wizard). The P3a and P3a-fix snapshots stay on disk
+# as the record of what those keyed runs used; they are simply no longer
+# served.
+if [ -f build/state-p5-page.bin ]; then
+  gzip -9 -c build/state-p5-page.bin > page/assets/state-p5-page.bin.gz
+  echo "staged page/assets/state-p5-page.bin.gz (networked tier)"
 else
-  echo "build/state-p4-page.bin missing; networked tier will not load" >&2
+  echo "build/state-p5-page.bin missing; networked tier will not load" >&2
 fi
 
 if [ -f build/state-page.bin ]; then

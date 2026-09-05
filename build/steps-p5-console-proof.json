@@ -1,0 +1,30 @@
+[
+ {
+  "name": "ICRNL is ON at the login shell, from the overlay not from a tool",
+  "cmd": "stty -a 2>/dev/null | tr ' \\t' '\\n\\n' | grep -x -e icrnl -e -icrnl"
+ },
+ {
+  "name": "the full termios, for the record",
+  "cmd": "stty -g"
+ },
+ {
+  "name": "the MOTD file is there and names the three commands",
+  "cmd": "cat /etc/temur-motd"
+ },
+ {
+  "name": "console.sh is the only new profile.d entry, mode 0644 root:root",
+  "cmd": "ls -ln /etc/profile.d/"
+ },
+ {
+  "name": "the snapshot ships NO config.json, so temur init will not refuse",
+  "cmd": "[ ! -e /root/.config/temur/config.json ] && echo NO-CONFIG-OK"
+ },
+ {
+  "name": "the bespoke key helper is RETIRED from the overlay",
+  "cmd": "! command -v temur-setkey && echo HELPER-RETIRED-OK"
+ },
+ {
+  "name": "temur itself is still the shipped binary at /usr/bin",
+  "cmd": "command -v temur && temur --version"
+ }
+]

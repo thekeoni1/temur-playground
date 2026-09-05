@@ -1,15 +1,16 @@
-// Sandbox P3a: temur in the browser, with BYO-key networking.
+// Sandbox P3b: temur in the browser, with BYO-key networking.
 //
 // TWO TIERS.
 //   offline   - the P2 snapshot, no NIC, no relay. Always available.
-//   networked - the P3a snapshot, ne2k NIC, traffic to a WISP relay.
+//   networked - the P3b snapshot, ne2k NIC, traffic to a WISP relay.
 // The page probes the relay first and falls back to the offline tier with
 // a plain notice rather than half-working.
 //
 // THE PAGE IS NEVER IN THE KEY PATH. There is no key input field here and
 // there never will be one: the key is typed into temur inside the
-// terminal, in the guest. That is the strongest form of the trust story,
-// because the page has nothing to leak.
+// terminal, in the guest, at temur's OWN hidden prompt. That is the
+// strongest form of the trust story, because the page has nothing to
+// leak.
 //
 // Terminal geometry is fixed at 80x24 (see P2). Dynamic resize is parked.
 
@@ -22,7 +23,7 @@ const MEM_MB = 128;
 const RELAY_WISP = "wisp://127.0.0.1:8089/";
 const RELAY_WS = "ws://127.0.0.1:8089/";
 
-const SNAP_ONLINE = "assets/state-p4-page.bin.gz";
+const SNAP_ONLINE = "assets/state-p5-page.bin.gz";
 const SNAP_OFFLINE = "assets/state-page.bin.gz";
 
 // Networking does not survive restore_state: the guest kernel's interface
@@ -37,7 +38,37 @@ const NET_NUDGE =
   "ip route add default via 192.168.86.1 2>/dev/null; " +
   "ip neigh flush all\n";
 
-const LAUNCH = "TERM=xterm temur\n";
+// THE TWO LANDINGS.
+//
+// Offline tier: that snapshot carries a keyless local config, so temur
+// itself is the right thing to start.
+//
+// Networked tier: the guest lands at TEMUR'S OWN SETUP WIZARD (P3b item
+// 10). It replaced a baked Anthropic config plus a bespoke key helper,
+// and it is better on every axis that matters: the visitor chooses their
+// own provider instead of being defaulted into one, the key is typed at
+// temur's own hidden prompt rather than into something written for this
+// playground, and the guest behaves exactly like a real first install,
+// which is the demo. The wizard refuses to run over an existing config,
+// so the snapshot deliberately ships none.
+//
+// The MOTD is printed first so the three commands are on screen above the
+// wizard for anyone who backs out of it with Ctrl-C.
+const LAUNCH_OFFLINE = "TERM=xterm temur\n";
+const LAUNCH_INIT = "cat /etc/temur-motd; TERM=xterm temur init\n";
+
+// netcheck needs a config for doctor to read, and the snapshot has none
+// on purpose. It writes a THROWAWAY one under a redirected
+// XDG_CONFIG_HOME in /tmp and removes it in the same line, so the guest
+// the visitor would meet is not altered. Keyless: no key file is named
+// or created.
+const NETCHECK_PROBE =
+  "mkdir -p /tmp/nc/temur && printf '%s' " +
+  "'{\"provider\":\"anthropic\",\"max_tokens\":4096," +
+  "\"base_url\":\"https://api.anthropic.com\"," +
+  "\"model\":\"claude-sonnet-5\"}' > /tmp/nc/temur/config.json && " +
+  "XDG_CONFIG_HOME=/tmp/nc temur doctor 2>&1 | grep -iE '(un)?reachable:'; " +
+  "rm -rf /tmp/nc\n";
 
 const statusEl = document.getElementById("status");
 const barEl = document.querySelector("#bar > div");
@@ -328,18 +359,17 @@ async function main() {
       for (const ch of s) emulator.serial0_send(ch);
     };
 
+    const q = new URLSearchParams(location.search);
     setTimeout(() => {
       if (networked) send(NET_NUDGE);
       setTimeout(
         () => {
-          // In the NETWORKED tier the page does not launch temur. temur
-          // refuses to start for a hosted provider until a key exists
-          // ("secret: APP_SECRET_FILE is not set"), and the page is not
-          // allowed anywhere near a key, so it lands the operator at the
-          // guest shell and tells them the two commands to run. The key
-          // is typed inside the guest, into a helper that turns terminal
-          // echo off; the page never sees a keystroke of it.
-          if (!networked) send(LAUNCH);
+          // The networked tier lands at temur's own setup wizard; the
+          // offline tier starts temur directly. netcheck is the one
+          // exception: it drives the terminal itself, so the wizard must
+          // not be sitting on the same tty waiting for an answer.
+          if (!networked) send(LAUNCH_OFFLINE);
+          else if (!q.has("netcheck")) send(LAUNCH_INIT);
           const totalMs = Math.round(performance.now() - t0);
           window.__p3 = {
             tier: networked ? "networked" : "offline",
@@ -352,10 +382,13 @@ async function main() {
           if (networked) {
             window.__p3.relayWatch = watchRelay(emulator).mode;
             noticeEl.textContent =
-              "Networked tier. You are at the guest shell. Run  temur-setkey  " +
-              "to enter your API key (input is hidden, it is written only " +
-              "inside this throwaway VM), then run  temur  to start. " +
-              "This page has no key field and never reads your key.";
+              "Networked tier. The terminal is running  temur init , temur's " +
+              "own setup wizard: pick a provider, then paste your API key at " +
+              "its hidden prompt (paste with Ctrl-Shift-V). The key is typed " +
+              "into the emulated machine, not into this page, and it is gone " +
+              "when you close the tab. Ctrl-C leaves the wizard at a shell, " +
+              "where  temur init ,  temur  and  temur doctor  are the three " +
+              "commands.";
             noticeEl.className = "notice ok";
           }
           status(
@@ -375,7 +408,6 @@ async function main() {
           );
           document.getElementById("bar").style.display = "none";
           term.focus();
-          const q = new URLSearchParams(location.search);
           if (q.has("selftest")) selftest();
           // netcheck proves the NETWORKED tier from the browser without
           // capturing anything: it runs the keyless doctor probe and
@@ -464,10 +496,11 @@ main();
 // operator has typed anything; it is not for use during a keyed session,
 // which is why the capturing self-test refuses the networked tier outright.
 async function netcheck(send) {
-  // Nothing to quit: the networked tier lands at a shell.
+  // The init landing is suppressed for this mode, so the guest is at a
+  // shell and this is the only thing typed into it.
   await wait(2500);
-  send("temur doctor 2>&1 | grep -i reachable\n");
-  await wait(9000);
+  send(NETCHECK_PROBE);
+  await wait(12000);
 
   const flat = screen().replace(/\s+/g, " ");
   const m = flat.match(/(PASS|FAIL): (un)?reachable:[^|]{0,90}/);

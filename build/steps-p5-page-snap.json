@@ -1,0 +1,30 @@
+[
+ {
+  "name": "bring up eth0 statically",
+  "cmd": "ip link set eth0 up && ip addr add 192.168.86.100/24 dev eth0 && ip route add default via 192.168.86.1 && printf '192.0.2.1 api.anthropic.com\\n192.0.2.2 api.openai.com\\n192.0.2.3 generativelanguage.googleapis.com\\n192.0.2.4 api.x.ai\\n' >> /etc/hosts && echo brought-up"
+ },
+ {
+  "name": "PROOF (throwaway config, removed here): key sandbox + reachability",
+  "cmd": "mkdir -p /tmp/p5probe/temur && printf '%s' '{\"provider\":\"anthropic\",\"max_tokens\":4096,\"base_url\":\"https://api.anthropic.com\",\"model\":\"claude-sonnet-5\"}' > /tmp/p5probe/temur/config.json && XDG_CONFIG_HOME=/tmp/p5probe APP_SECRET_FILE=/tmp/p5probe/key temur doctor > /tmp/p5probe/doctor.txt 2>&1; grep -i 'key isolation\\|bash key sandbox' /tmp/p5probe/doctor.txt; grep -iE '(un)?reachable:' /tmp/p5probe/doctor.txt; rm -rf /tmp/p5probe; [ ! -e /tmp/p5probe ] && echo PROBE-REMOVED"
+ },
+ {
+  "name": "the snapshot carries NO config, NO key, and no leftover probe",
+  "cmd": "ls -la /root/.config/temur 2>&1; ls -la /root/.secrets 2>&1; ls -la /tmp 2>&1; [ ! -e /root/.config/temur/config.json ] && [ ! -e /root/.secrets ] && [ ! -e /tmp/p5probe ] && echo KEYLESS-SNAPSHOT-OK"
+ },
+ {
+  "name": "APP_SECRET_FILE is NOT persisted anywhere",
+  "cmd": "echo env=[$APP_SECRET_FILE]; grep -c APP_SECRET_FILE /root/.profile /etc/profile /etc/profile.d/*.sh 2>&1; [ -z \"$APP_SECRET_FILE\" ] && echo NO-SECRET-ENV-OK"
+ },
+ {
+  "name": "ICRNL is ON, from the overlay, so Enter works in the wizard",
+  "cmd": "stty -g; stty -a 2>/dev/null | tr ' \\t' '\\n\\n' | grep -x -e icrnl -e -icrnl"
+ },
+ {
+  "name": "set tty size",
+  "cmd": "stty rows 24 cols 80; echo size-set"
+ },
+ {
+  "name": "settle",
+  "cmd": "echo P3B-INIT-LANDING-SNAPSHOT-POINT"
+ }
+]

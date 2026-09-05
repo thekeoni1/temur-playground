@@ -1,0 +1,8 @@
+temur in a browser. This is a throwaway Linux computer running inside
+your browser tab. Close the tab and it is gone, key included.
+
+  temur init      set up a provider and enter your API key (input hidden)
+  temur           start the agent
+  temur doctor    check the config and the network
+
+Paste with Ctrl-Shift-V. Plain Ctrl-V sends a control byte, not a paste.
