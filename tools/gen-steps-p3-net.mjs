@@ -1,0 +1,60 @@
+// Steps for the P3a networking + keyless doctor proof.
+//
+// Static addressing on purpose: busybox udhcpc needs raw sockets
+// (CONFIG_PACKET), which the guest kernel deliberately does not have.
+// v86's fake network puts the router at 192.168.86.1 and expects the
+// guest at 192.168.86.100, and with dns_method "static" that router is
+// also the DNS server.
+//
+// The temur config carries the REAL hostname. The relay is transparent at
+// TCP level, so no base_url rewriting happens anywhere - which is also
+// what lets the certificate match inside the guest.
+import fs from "fs";
+
+const cfg = JSON.stringify({
+  provider: "anthropic",
+  max_tokens: 4096,
+  anthropic: {
+    base_url: "https://api.anthropic.com",
+    model: "claude-sonnet-5",
+    context_window: 200000,
+  },
+});
+
+const steps = [
+  {
+    name: "bring up eth0 statically",
+    cmd:
+      "ip link set eth0 up && " +
+      "ip addr add 192.168.86.100/24 dev eth0 && " +
+      "ip route add default via 192.168.86.1 && " +
+      "printf '192.0.2.1 api.anthropic.com\\n192.0.2.2 api.openai.com\\n192.0.2.3 generativelanguage.googleapis.com\\n192.0.2.4 api.x.ai\\n' >> /etc/hosts && " +
+      "echo brought-up",
+  },
+  {
+    name: "link and route state",
+    cmd: "ip addr show eth0 | head -4; ip route; echo --- hosts ---; cat /etc/hosts",
+  },
+  {
+    name: "no DNS at all: resolv.conf absent",
+    cmd: "cat /etc/resolv.conf 2>&1; echo \"resolv-exit=$?\"; ping -c1 -W2 192.0.2.1 2>&1 | head -3",
+  },
+  {
+    name: "write hosted config, NO KEY",
+    cmd:
+      "mkdir -p /root/.config/temur && printf '%s' '" +
+      cfg +
+      "' > /root/.config/temur/config.json && echo config-written && " +
+      "echo '--- config has no key: ---' && cat /root/.config/temur/config.json",
+  },
+  {
+    name: "KEYLESS DOCTOR: TLS terminates in the guest",
+    cmd: "temur doctor 2>&1 | head -40",
+  },
+];
+
+fs.writeFileSync(
+  "build/steps-p3-net.json",
+  JSON.stringify(steps, null, 1),
+);
+console.log("written");

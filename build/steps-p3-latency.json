@@ -1,0 +1,14 @@
+[
+ {
+  "name": "bring up",
+  "cmd": "ip link set eth0 up && ip addr add 192.168.86.100/24 dev eth0 && ip route add default via 192.168.86.1 && printf '192.0.2.1 api.anthropic.com\\n' >> /etc/hosts && echo up"
+ },
+ {
+  "name": "config",
+  "cmd": "mkdir -p /root/.config/temur && printf '%s' '{\"provider\":\"anthropic\",\"max_tokens\":4096,\"base_url\":\"https://api.anthropic.com\",\"model\":\"claude-sonnet-5\"}' > /root/.config/temur/config.json && echo ok"
+ },
+ {
+  "name": "timed probe x3",
+  "cmd": "for i in 1 2 3; do time temur doctor 2>&1 | grep -c 'PASS: reachable'; done 2>&1 | grep -E 'real|^[0-9]'"
+ }
+]

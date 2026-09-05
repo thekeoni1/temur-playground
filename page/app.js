@@ -1,35 +1,53 @@
-// Sandbox P2, step 2: boot a usable temur TUI in the browser.
+// Sandbox P3a: temur in the browser, with BYO-key networking.
 //
-// The page restores a v86 snapshot that was taken at the guest shell
-// prompt with the temur config already written and the tty already sized
-// to 80x24. It does NOT download the kernel or the initrd: restore_state
-// carries full memory and device state, so those 7.68 MB are dead weight
-// here (proved in tools/restore-nokernel.mjs before relying on it).
+// TWO TIERS.
+//   offline   - the P2 snapshot, no NIC, no relay. Always available.
+//   networked - the P3a snapshot, ne2k NIC, traffic to a WISP relay.
+// The page probes the relay first and falls back to the offline tier with
+// a plain notice rather than half-working.
 //
-// Terminal geometry is FIXED at 80x24 this phase. The snapshot's stty was
-// taken at that size and temur reads the size once at startup, so a
-// browser-side resize would desync the guest. Dynamic resize is P3+.
+// THE PAGE IS NEVER IN THE KEY PATH. There is no key input field here and
+// there never will be one: the key is typed into temur inside the
+// terminal, in the guest. That is the strongest form of the trust story,
+// because the page has nothing to leak.
+//
+// Terminal geometry is fixed at 80x24 (see P2). Dynamic resize is parked.
 
 const COLS = 80;
 const ROWS = 24;
 const MEM_MB = 128;
-const STATE_URL = "assets/state-page.bin.gz";
 
-// Sent once the machine is running. The snapshot sits at the shell prompt,
-// so this is what turns "a booted guest" into "a live temur prompt".
+// The relay URL is a knob: P3a is 127.0.0.1 and nothing else. P3b, if it
+// is ever authorized, flips this and NOTHING else on the page.
+const RELAY_WISP = "wisp://127.0.0.1:8089/";
+const RELAY_WS = "ws://127.0.0.1:8089/";
+
+const SNAP_ONLINE = "assets/state-p3-page.bin.gz";
+const SNAP_OFFLINE = "assets/state-page.bin.gz";
+
+// Networking does not survive restore_state: the guest kernel's interface
+// state comes back but the JS-side adapter and its websocket are new, and
+// the link stays dead until the address is re-added. Measured: with no
+// nudge the guest cannot connect at all; a link bounce or an ARP flush
+// alone is not enough either. This full re-bring-up is the minimum that
+// works, and it is idempotent.
+const NET_NUDGE =
+  "ip link set eth0 down; ip addr flush dev eth0; ip link set eth0 up; " +
+  "ip addr add 192.168.86.100/24 dev eth0; " +
+  "ip route add default via 192.168.86.1 2>/dev/null; " +
+  "ip neigh flush all\n";
+
 const LAUNCH = "TERM=xterm temur\n";
 
 const statusEl = document.getElementById("status");
 const barEl = document.querySelector("#bar > div");
+const noticeEl = document.getElementById("notice");
 
 let lastEcho = null;
 const pending = [];
-
-// Time to a real TUI, not just to "the launch line was sent". temur enters
-// the alternate screen as its first act of drawing, so the first
-// ESC [ ? 1049 h on the serial line is the honest "interactive" moment.
 let tuiReadyMs = null;
 let altSeen = "";
+let networked = false;
 
 function status(line, isErr) {
   statusEl.textContent = line;
@@ -53,16 +71,50 @@ const term = new Terminal({
 });
 term.open(document.getElementById("term"));
 
-// --- fetch the snapshot, with a byte counter ------------------------
+// --- is the relay there? ---------------------------------------------
+//
+// A plain websocket open attempt. If it fails the page says so and runs
+// the offline tier, rather than booting a networked guest whose requests
+// would all hang.
+function probeRelay(timeoutMs = 2500) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => {
+      if (!done) {
+        done = true;
+        resolve(v);
+      }
+    };
+    let ws;
+    try {
+      ws = new WebSocket(RELAY_WS);
+    } catch (e) {
+      return finish(false);
+    }
+    ws.onopen = () => {
+      try {
+        ws.close();
+      } catch (e) {}
+      finish(true);
+    };
+    ws.onerror = () => finish(false);
+    ws.onclose = () => finish(false);
+    setTimeout(() => {
+      try {
+        ws.close();
+      } catch (e) {}
+      finish(false);
+    }, timeoutMs);
+  });
+}
+
+// --- fetch the snapshot, counting bytes ------------------------------
 
 async function fetchState(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error("fetch " + url + ": HTTP " + res.status);
   const total = Number(res.headers.get("content-length") || 0);
 
-  // Count the bytes actually on the wire, then gunzip in the browser.
-  // The server sends the .gz verbatim with no Content-Encoding, so this
-  // is a real transfer measurement and not a doubly-decompressed one.
   let got = 0;
   const counter = new TransformStream({
     transform(chunk, ctrl) {
@@ -85,7 +137,7 @@ async function fetchState(url) {
   return { buf, wire: got };
 }
 
-// --- boot -----------------------------------------------------------
+// --- boot -------------------------------------------------------------
 
 async function main() {
   if (typeof DecompressionStream === "undefined") {
@@ -94,23 +146,39 @@ async function main() {
   }
 
   const t0 = performance.now();
+
+  status("checking for the relay...");
+  networked = await probeRelay();
+
+  if (networked) {
+    noticeEl.textContent =
+      "Networked tier: the guest can reach the configured API provider " +
+      "through the local relay.";
+    noticeEl.className = "notice ok";
+  } else {
+    noticeEl.textContent =
+      "OFFLINE TIER: no relay is reachable at " +
+      RELAY_WS +
+      ", so this guest has no network. temur will run and everything " +
+      "local to it works, but any request to a hosted provider will fail. " +
+      "Start the relay and reload to use a hosted model.";
+    noticeEl.className = "notice warn";
+  }
+
+  const snapUrl = networked ? SNAP_ONLINE : SNAP_OFFLINE;
   let state;
   try {
-    state = await fetchState(STATE_URL);
+    state = await fetchState(snapUrl);
   } catch (e) {
     status("snapshot fetch failed: " + e.message, true);
     return;
   }
   const tFetched = performance.now();
 
-  status(
-    "restoring machine state (" +
-      fmtMB(state.buf.byteLength) +
-      " decompressed)...",
-  );
+  status("restoring machine state (" + fmtMB(state.buf.byteLength) + ")...");
   barEl.style.width = "100%";
 
-  const emulator = new V86({
+  const opts = {
     wasm_path: "vendor/v86.wasm",
     bios: { url: "vendor/seabios.bin" },
     vga_bios: { url: "vendor/vgabios.bin" },
@@ -120,11 +188,23 @@ async function main() {
     disable_keyboard: true,
     disable_mouse: true,
     disable_speaker: true,
-  });
+  };
+  if (networked) {
+    // dns_method MUST be "static". The wisp backend defaults it to "doh",
+    // which would make this page do DNS-over-HTTPS to cloudflare-dns.com:
+    // off-box egress, from the page, without the user asking. The guest
+    // resolves nothing anyway - its /etc/hosts pins each allowed API
+    // hostname to an address the relay maps back.
+    opts.net_device = {
+      type: "ne2k",
+      relay_url: RELAY_WISP,
+      dns_method: "static",
+    };
+  }
+
+  const emulator = new V86(opts);
   window.emulator = emulator;
 
-  // Guest -> terminal. Bytes arrive one at a time; batch them per frame
-  // or the first full TUI repaint crawls.
   let outBuf = [];
   let flushQueued = false;
   function flush() {
@@ -143,7 +223,7 @@ async function main() {
       altSeen = (altSeen + String.fromCharCode(byte)).slice(-16);
       if (altSeen.includes("[?1049h")) {
         tuiReadyMs = Math.round(performance.now() - t0);
-        if (window.__p2) window.__p2.tuiReadyMs = tuiReadyMs;
+        if (window.__p3) window.__p3.tuiReadyMs = tuiReadyMs;
       }
     }
     outBuf.push(byte);
@@ -153,7 +233,6 @@ async function main() {
     }
   });
 
-  // Terminal -> guest, as UTF-8 bytes.
   const enc = new TextEncoder();
   term.onData((data) => {
     pending.push(performance.now());
@@ -168,52 +247,79 @@ async function main() {
     const restoreMs = Math.round(performance.now() - tR);
     emulator.run();
 
+    const send = (s) => {
+      for (const ch of s) emulator.serial0_send(ch);
+    };
+
     setTimeout(() => {
-      for (const ch of LAUNCH) emulator.serial0_send(ch);
-      const totalMs = Math.round(performance.now() - t0);
-      window.__p2 = {
-        wireBytes: state.wire,
-        stateBytes: state.buf.byteLength,
-        fetchMs: Math.round(tFetched - t0),
-        restoreMs: restoreMs,
-        readyMs: totalMs,
-      };
-      status(
-        "ready: temur running at " +
-          COLS +
-          "x" +
-          ROWS +
-          "\nfetch " +
-          window.__p2.fetchMs +
-          " ms / restore " +
-          restoreMs +
-          " ms / page-open to interactive " +
-          totalMs +
-          " ms",
+      if (networked) send(NET_NUDGE);
+      setTimeout(
+        () => {
+          // In the NETWORKED tier the page does not launch temur. temur
+          // refuses to start for a hosted provider until a key exists
+          // ("secret: APP_SECRET_FILE is not set"), and the page is not
+          // allowed anywhere near a key, so it lands the operator at the
+          // guest shell and tells them the two commands to run. The key
+          // is typed inside the guest, into a helper that turns terminal
+          // echo off; the page never sees a keystroke of it.
+          if (!networked) send(LAUNCH);
+          const totalMs = Math.round(performance.now() - t0);
+          window.__p3 = {
+            tier: networked ? "networked" : "offline",
+            wireBytes: state.wire,
+            stateBytes: state.buf.byteLength,
+            fetchMs: Math.round(tFetched - t0),
+            restoreMs: restoreMs,
+            readyMs: totalMs,
+          };
+          if (networked) {
+            noticeEl.textContent =
+              "Networked tier. You are at the guest shell. Run  temur-setkey  " +
+              "to enter your API key (input is hidden, it is written only " +
+              "inside this throwaway VM), then run  temur  to start. " +
+              "This page has no key field and never reads your key.";
+            noticeEl.className = "notice ok";
+          }
+          status(
+            "ready (" +
+              window.__p3.tier +
+              "): temur running at " +
+              COLS +
+              "x" +
+              ROWS +
+              "\nfetch " +
+              window.__p3.fetchMs +
+              " ms / restore " +
+              restoreMs +
+              " ms / launch sent at " +
+              totalMs +
+              " ms",
+          );
+          document.getElementById("bar").style.display = "none";
+          term.focus();
+          const q = new URLSearchParams(location.search);
+          if (q.has("selftest")) selftest();
+          // netcheck proves the NETWORKED tier from the browser without
+          // capturing anything: it runs the keyless doctor probe and
+          // posts nothing at all. The evidence is the relay's own
+          // connection log, which never contains payload.
+          if (q.has("netcheck") && networked) {
+            netcheck(send);
+          }
+        },
+        networked ? 900 : 300,
       );
-      document.getElementById("bar").style.display = "none";
-      term.focus();
-      if (new URLSearchParams(location.search).has("selftest")) selftest();
-      setInterval(() => {
-        if (lastEcho !== null) {
-          statusEl.textContent =
-            statusEl.textContent.split("\nlast keypress")[0] +
-            "\nlast keypress to first echoed byte: " +
-            lastEcho +
-            " ms";
-        }
-      }, 500);
     }, 400);
   });
 }
 
 // --- self-test ------------------------------------------------------
 //
-// Opened with ?selftest=1 the page drives itself and POSTs what it saw
-// back to the local server. That is how a headless build session gets
-// hard evidence out of a real browser: the literal xterm buffer text at
-// three points, plus the timings. term.input() goes through the same
-// onData path a physical keystroke does, so the echo figure is real.
+// REFUSES TO RUN IN THE NETWORKED TIER. The self-test reads the terminal
+// buffer and POSTs it to the local server. In the networked tier a real
+// key may have been typed into temur, and a screen capture is exactly how
+// a key would escape into a file. This is enforced here rather than left
+// as an instruction, so no operator step can turn it on by accident.
 
 function screen() {
   const b = term.buffer.active;
@@ -228,24 +334,27 @@ function screen() {
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function selftest() {
-  const rep = { ...window.__p2, ua: navigator.userAgent, cols: COLS, rows: ROWS };
+  if (networked) {
+    status(
+      "selftest REFUSED: it captures the terminal, and the networked tier " +
+        "may contain a key. Run it against the offline tier only.",
+      true,
+    );
+    return;
+  }
+  const rep = { ...window.__p3, ua: navigator.userAgent, cols: COLS, rows: ROWS };
   try {
     await wait(4000);
     rep.frameAfterLaunch = screen();
-
-    term.input("hello from p2");
+    term.input("hello from p3a");
     await wait(2500);
     rep.frameAfterTyping = screen();
     rep.echoMs = lastEcho;
-
-    term.input(String.fromCharCode(127).repeat(13));
+    term.input(String.fromCharCode(127).repeat(14));
     await wait(2000);
-    rep.frameAfterErase = screen();
-
     term.input("exit\r");
     await wait(5000);
     rep.frameAfterExit = screen();
-
     rep.tuiReadyMs = tuiReadyMs;
     rep.ok = true;
   } catch (e) {
@@ -257,7 +366,40 @@ async function selftest() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rep, null, 1),
   });
-  status("selftest posted");
+  status("selftest posted (offline tier)");
 }
 
 main();
+
+// --- netcheck ---------------------------------------------------------
+//
+// Proves the NETWORKED tier from a real browser. It runs the KEYLESS
+// doctor probe and posts back ONE line: doctor's reachability verdict.
+// It never captures the terminal buffer. It is safe only because it runs
+// against a freshly restored, provably keyless snapshot before any
+// operator has typed anything; it is not for use during a keyed session,
+// which is why the capturing self-test refuses the networked tier outright.
+async function netcheck(send) {
+  // Nothing to quit: the networked tier lands at a shell.
+  await wait(2500);
+  send("temur doctor 2>&1 | grep -i reachable\n");
+  await wait(9000);
+
+  const flat = screen().replace(/\s+/g, " ");
+  const m = flat.match(/(PASS|FAIL): (un)?reachable:[^|]{0,90}/);
+  await fetch("/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      {
+        mode: "netcheck",
+        tier: "networked",
+        tuiReadyMs: tuiReadyMs,
+        line: m ? m[0].trim() : "(no reachability line found)",
+      },
+      null,
+      1,
+    ),
+  });
+  status("netcheck posted");
+}

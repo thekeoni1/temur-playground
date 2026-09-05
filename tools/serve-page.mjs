@@ -66,6 +66,28 @@ const server = http.createServer((req, res) => {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "require-corp",
       "Cross-Origin-Resource-Policy": "same-origin",
+      // Locality, ENFORCED by the browser rather than merely observed.
+      // connect-src is the page's own origin plus the relay websocket and
+      // nothing else, so if anything ever tried to reach off-box - a DoH
+      // request to cloudflare-dns.com being the one this design actively
+      // avoids - the browser would block it and report it in the console.
+      // wasm-unsafe-eval is required for v86's WebAssembly.
+      "Content-Security-Policy": [
+        "default-src 'self'",
+        "script-src 'self' 'wasm-unsafe-eval'",
+        "style-src 'self' 'unsafe-inline'",
+        "connect-src 'self' ws://127.0.0.1:8089",
+        // v86 starts its CPU worker from a blob URL
+        // (URL.createObjectURL + new Worker), which default-src 'self'
+        // blocks outright: the machine restores and then produces no
+        // output at all. blob: workers inherit this policy, so
+        // connect-src still bounds what the worker can reach.
+        "worker-src 'self' blob:",
+        "child-src 'self' blob:",
+        "img-src 'self' data:",
+        "base-uri 'none'",
+        "form-action 'none'",
+      ].join("; "),
     });
     served.set(rel, st.size);
     console.log("200 " + rel + "  " + st.size + " B  " + type);

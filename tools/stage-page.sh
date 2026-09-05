@@ -29,9 +29,16 @@ cp node_modules/@xterm/xterm/css/xterm.css page/vendor/
 cp bios/seabios.bin page/vendor/
 cp bios/vgabios.bin page/vendor/
 
+if [ -f build/state-p3-page.bin ]; then
+  gzip -9 -c build/state-p3-page.bin > page/assets/state-p3-page.bin.gz
+  echo "staged page/assets/state-p3-page.bin.gz (networked tier)"
+else
+  echo "build/state-p3-page.bin missing; networked tier will not load" >&2
+fi
+
 if [ -f build/state-page.bin ]; then
   gzip -9 -c build/state-page.bin > page/assets/state-page.bin.gz
-  echo "staged page/assets/state-page.bin.gz"
+  echo "staged page/assets/state-page.bin.gz (offline tier)"
 else
   cat >&2 <<'EOF'
 build/state-page.bin missing. Regenerate it with:

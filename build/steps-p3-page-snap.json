@@ -1,0 +1,34 @@
+[
+ {
+  "name": "bring up eth0 statically",
+  "cmd": "ip link set eth0 up && ip addr add 192.168.86.100/24 dev eth0 && ip route add default via 192.168.86.1 && printf '192.0.2.1 api.anthropic.com\\n192.0.2.2 api.openai.com\\n192.0.2.3 generativelanguage.googleapis.com\\n192.0.2.4 api.x.ai\\n' >> /etc/hosts && echo brought-up"
+ },
+ {
+  "name": "write hosted config pointing at a key path, NO KEY FILE",
+  "cmd": "mkdir -p /root/.config/temur && printf '%s' '{\"provider\":\"anthropic\",\"max_tokens\":4096,\"base_url\":\"https://api.anthropic.com\",\"model\":\"claude-sonnet-5\"}' > /root/.config/temur/config.json && echo config-written"
+ },
+ {
+  "name": "bake the key helper",
+  "cmd": "printf '%b' '#!/bin/sh\\n# Write an API key to the path temur reads it from, without echoing it.\\nKEYFILE=/root/.config/temur/key\\nprintf \"Paste your API key, then press Enter (input is hidden): \"\\nstty -echo 2>/dev/null\\nread -r K\\nstty echo 2>/dev/null\\necho\\nif [ -z \"$K\" ]; then echo \"no key entered; nothing written\"; exit 1; fi\\numask 077\\nprintf \"%s\" \"$K\" > \"$KEYFILE\"\\nchmod 600 \"$KEYFILE\"\\nK=\\necho \"key written to $KEYFILE\"\\necho \"now run: temur\"' > /usr/local/bin/temur-setkey && chmod +x /usr/local/bin/temur-setkey && echo helper-written && head -3 /usr/local/bin/temur-setkey"
+ },
+ {
+  "name": "confirm the key file does NOT exist",
+  "cmd": "ls -l /root/.config/temur/key 2>&1; echo missing-is-expected; echo ---; cat /root/.config/temur/config.json"
+ },
+ {
+  "name": "point APP_SECRET_FILE at the key path",
+  "cmd": "export APP_SECRET_FILE=/root/.config/temur/key; printf 'export APP_SECRET_FILE=%s\\n' /root/.config/temur/key >> /root/.profile; echo APP_SECRET_FILE=$APP_SECRET_FILE"
+ },
+ {
+  "name": "set tty size",
+  "cmd": "stty rows 24 cols 80; echo size-set"
+ },
+ {
+  "name": "prove reachability, still keyless",
+  "cmd": "temur doctor 2>&1 | grep -iE 'reachable|needs a key'"
+ },
+ {
+  "name": "settle",
+  "cmd": "echo P3A-NET-SNAPSHOT-POINT"
+ }
+]

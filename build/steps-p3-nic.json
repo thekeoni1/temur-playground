@@ -1,0 +1,5 @@
+[
+ {"name": "eth0 present", "cmd": "ip link 2>&1; echo ---; ls /sys/class/net/ 2>&1"},
+ {"name": "driver bound", "cmd": "cat /sys/class/net/eth0/device/uevent 2>&1 | head -5; dmesg 2>&1 | grep -i 'ne2k\\|eth0' | head -5"},
+ {"name": "no dhcp client needed", "cmd": "grep -c PACKET /proc/net/protocols 2>&1; echo packet-family-absent-is-expected"}
+]

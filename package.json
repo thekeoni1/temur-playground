@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@mercuryworkshop/wisp-js": "0.4.1",
     "@xterm/xterm": "6.0.0",
     "v86": "0.5.458"
   }
