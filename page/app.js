@@ -493,9 +493,18 @@ async function main() {
   networked = probe === "ok";
 
   if (networked) {
+    // The good-news banner, and it used to describe the plumbing rather
+    // than say anything useful: "the guest can reach the configured API
+    // provider through the local relay". Same defect as the offline
+    // notice on the other branch of this if, and worse, because "the
+    // local relay" is FACTUALLY WRONG on the deployed page: RELAY_WS is
+    // wss://relay.temur.live and the relay is a VPS, local to nobody.
+    // Another laptop-era leftover, on the tier every ordinary visitor
+    // sees. What a visitor needs from this line is whether setting up a
+    // key is worth their time.
     noticeEl.textContent =
-      "Networked tier: the guest can reach the configured API provider " +
-      "through the local relay.";
+      "Networked tier: this sandbox can reach an AI provider, so a key " +
+      "you set up here will work.";
     noticeEl.className = "notice ok";
   } else {
     // WRITTEN FOR A VISITOR, NOT FOR THE DEVELOPER WHO BUILT THIS. The
