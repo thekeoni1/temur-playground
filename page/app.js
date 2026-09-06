@@ -321,7 +321,7 @@ function watchRelay(emulator) {
   function banner(text) {
     bannerEl.textContent = text;
     const btn = document.createElement("button");
-    btn.textContent = "reload for the offline tier";
+    btn.textContent = "reload without a provider";
     btn.onclick = () => location.reload();
     bannerEl.appendChild(document.createElement("br"));
     bannerEl.appendChild(btn);
@@ -371,7 +371,7 @@ function watchRelay(emulator) {
         "Relay connection lost. Requests from the guest will HANG rather " +
           "than fail: the connection was accepted inside this page before the " +
           "relay went away, so nothing tells the guest it is gone. Restart the " +
-          "relay and this notice clears, or reload to run the offline tier.",
+          "relay and this notice clears, or reload to run without a provider.",
       );
     }
   }
@@ -517,7 +517,7 @@ async function main() {
     // The endpoint still matters for OUR debugging, so it goes to the
     // console below rather than into the reader's first sentence.
     noticeEl.textContent =
-      "OFFLINE TIER: this sandbox cannot reach an AI provider at the " +
+      "NO PROVIDER: this sandbox cannot reach an AI provider at the " +
       "moment, so an API key will not help here.";
     noticeEl.className = "notice warn";
     console.info("temur sandbox: offline tier, no relay reachable at " + RELAY_WS);
@@ -527,7 +527,7 @@ async function main() {
   // tier is the same offline tier either way, but the reason is
   // different and only one of the two is worth waiting out.
   if (probe === "refused") {
-    noticeEl.textContent = "OFFLINE TIER: " + sharedAddressText();
+    noticeEl.textContent = "NO PROVIDER: " + sharedAddressText();
     noticeEl.className = "notice warn";
   }
 
