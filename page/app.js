@@ -246,11 +246,11 @@ function probeRelay(timeoutMs = 2500) {
 // change without them.
 function sharedAddressText() {
   return (
-    "Too many people are using this from your network. The relay is " +
-    "running and this is not a fault: it limits how many connections it " +
-    "will take from any one address at a time, and the address you share " +
-    "with everyone around you is at that limit right now. Waiting a " +
-    "little and reloading usually clears it."
+    "Too many people are using this from your network. Nothing is " +
+    "broken, and this is not a fault at your end: the sandbox limits " +
+    "how many connections it takes from any one address at a time, and " +
+    "the address you share with everyone around you is at that limit " +
+    "right now. Waiting a little and reloading usually clears it."
   );
 }
 
@@ -498,13 +498,26 @@ async function main() {
       "through the local relay.";
     noticeEl.className = "notice ok";
   } else {
+    // WRITTEN FOR A VISITOR, NOT FOR THE DEVELOPER WHO BUILT THIS. The
+    // old wording ended "Start the relay and reload", which told a
+    // stranger to start a server they have no access to: a leftover
+    // from when this page only ever ran on a laptop, where it was a
+    // real instruction. It also spent its words on "relay", "guest" and
+    // a wss:// URL, and never said the one thing that would have saved
+    // the reader any time, which is that setting up a key here cannot
+    // work. An operator lost exactly that time on the live page.
+    //
+    // The endpoint still matters for OUR debugging, so it goes to the
+    // console below rather than into the reader's first sentence.
     noticeEl.textContent =
-      "OFFLINE TIER: no relay is reachable at " +
-      RELAY_WS +
-      ", so this guest has no network. temur will run and everything " +
-      "local to it works, but any request to a hosted provider will fail. " +
-      "Start the relay and reload to use a hosted model.";
+      "OFFLINE TIER: this sandbox cannot reach an AI provider at the " +
+      "moment. Nothing you did caused it and there is nothing to fix at " +
+      "your end. You do not need an API key here, and setting one up " +
+      "will not make it work. The computer below still runs, and " +
+      "everything inside it still works, so it is worth a look around; " +
+      "trying again later is reasonable.";
     noticeEl.className = "notice warn";
+    console.info("temur sandbox: offline tier, no relay reachable at " + RELAY_WS);
   }
 
   // A refusal is NOT an outage and must not be described as one. The
