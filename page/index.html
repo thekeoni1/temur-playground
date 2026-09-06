@@ -13,9 +13,13 @@
     color: #ccc;
     font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
-  #wrap { padding: 12px; max-width: 900px; }
-  #status { margin-bottom: 8px; white-space: pre; min-height: 3em; }
-  #bar { width: 640px; height: 6px; background: #333; margin: 4px 0 8px; }
+  #wrap { padding: 12px; max-width: 1000px; margin: 0 auto; }
+  /* pre-wrap, not pre: the ready line is 52 characters and cannot break,
+     so on a narrow screen `pre` made the STATUS the widest thing on the
+     page once the terminal had been dealt with. pre-wrap keeps the
+     newline between the two status lines and lets them wrap. */
+  #status { margin-bottom: 8px; white-space: pre-wrap; min-height: 3em; }
+  #bar { width: 100%; max-width: 640px; height: 6px; background: #333; margin: 4px 0 8px; }
   #bar > div { height: 100%; width: 0; background: #6a9; }
   #term { width: max-content; }
   #pastehint { margin: 6px 0 0; color: #999; font-size: 12px; }
@@ -56,6 +60,32 @@
     color: #da4;
     font-weight: bold;
   }
+
+  /* NARROW-VIEWPORT STEP-DOWN.
+
+     The terminal is 80x24 and stays 80x24: that geometry is baked into
+     the snapshot and temur reads its size once at startup, so nothing
+     here may change the grid. What these rules change is the size of a
+     pixel, not the number of cells. zoom scales the laid-out box as
+     well as the glyphs, which is exactly what is wanted: the document
+     stops being wider than the window instead of merely looking
+     smaller. A transform would scale the picture and leave the old box
+     behind, and the horizontal scrollbar with it.
+
+     The steps come from arithmetic, not taste. The rendered terminal is
+     704 px at fontSize 16, the wrap costs 24 px of padding, and a
+     classic scrollbar costs 15, so a viewport of V px can afford a zoom
+     of (V - 39) / 704. Each step below is the value for the NARROWEST
+     viewport that matches it, rounded down, so every width inside a
+     step fits rather than only the widest one. 80 columns on a phone is
+     small type, but the alternative is a page that scrolls sideways. */
+  @media (max-width: 743px) { #term { zoom: 0.85; } }
+  @media (max-width: 639px) { #term { zoom: 0.71; } }
+  @media (max-width: 539px) { #term { zoom: 0.56; } }
+  @media (max-width: 459px) { #term { zoom: 0.47; } }
+  @media (max-width: 399px) { #term { zoom: 0.45; } }
+  @media (max-width: 359px) { #term { zoom: 0.39; } }
+  @media (max-width: 319px) { #term { zoom: 0.34; } }
 </style>
 </head>
 <body>

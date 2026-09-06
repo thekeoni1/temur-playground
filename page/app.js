@@ -121,13 +121,26 @@ function fmtMB(n) {
 }
 
 // --- terminal -------------------------------------------------------
-
+//
+// fontSize is the one dimension that is safe to change here. COLS and
+// ROWS are NOT: 80x24 is baked into the snapshot's stty and temur reads
+// its size once at startup, so a browser-side grid change would leave
+// the guest drawing for a terminal that no longer exists. Bigger means
+// bigger pixels; the grid is the same 80x24 either way.
+//
+// 16 rather than 17 for a measured reason. At 17 the rendered terminal
+// is 748 px, which puts the page's content edge at 760 px: past the
+// 753 px a 768 px viewport actually has once a classic scrollbar takes
+// its 15, so the commonest tablet width would get a horizontal
+// scrollbar. At 16 the terminal is 704 px and that width has room to
+// spare. Narrow viewports are handled by the step-down in index.html,
+// which scales the rendered pixels and leaves this number alone.
 const term = new Terminal({
   cols: COLS,
   rows: ROWS,
   convertEol: false,
   cursorBlink: true,
-  fontSize: 14,
+  fontSize: 16,
   fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
   theme: { background: "#000000", foreground: "#d0d0d0" },
 });
