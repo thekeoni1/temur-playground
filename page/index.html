@@ -60,6 +60,34 @@
     color: #da4;
     font-weight: bold;
   }
+  /* The questions block. Plain <details>, closed by default, so the
+     terminal is still the first thing on the page and nothing here
+     pushes it down. No script: <details> opens by itself, from a click
+     or from Enter and Space on the keyboard. */
+  #faq { margin: 14px 0 0; max-width: 78ch; }
+  #faq h2 { font-size: 13px; margin: 0 0 6px; color: #99a; }
+  #faq details {
+    background: #202020;
+    border-left: 3px solid #444;
+    margin: 0 0 4px;
+    padding: 6px 10px;
+  }
+  #faq details[open] { border-left-color: #667; }
+  #faq summary { cursor: pointer; color: #bcd; }
+  #faq summary:focus-visible { outline: 2px solid #89a; outline-offset: 2px; }
+  #faq p { margin: 8px 0 4px; }
+  #faq ol { margin: 8px 0 4px; padding-left: 22px; }
+  #faq li { margin: 0 0 6px; }
+  #faq code {
+    background: #303030;
+    border-radius: 3px;
+    padding: 0 3px;
+    /* break-word, not break-all: break-all splits every long-ish token,
+       so "openai" came out as "opena i" on a narrow screen. This breaks
+       a word only when it would otherwise overflow, which in practice
+       means the key file path and nothing else. */
+    overflow-wrap: break-word;
+  }
 
   /* NARROW-VIEWPORT STEP-DOWN.
 
@@ -101,6 +129,155 @@
     control byte into the machine, and at the hidden key prompt you will
     not see that it did.
   </p>
+
+  <section id="faq">
+    <h2>Questions</h2>
+
+    <details>
+      <summary>What is this?</summary>
+      <p>
+        A small Linux computer, running inside this browser tab, with temur
+        already on it. temur is a command line AI agent. Nothing is
+        installed on your own machine, and nothing you do here is uploaded
+        anywhere. To get real answers out of it you need an API key from an
+        AI provider, which you give to the setup wizard in the terminal
+        above.
+      </p>
+    </details>
+
+    <details>
+      <summary>Where does my API key go?</summary>
+      <p>
+        Into the computer in this tab, and nowhere else. This page has no
+        box to type a key into, and it never reads what you type in the
+        terminal: you are typing into a program running inside the emulated
+        machine, at that program's own prompt. The key is written to a file
+        inside that machine, which exists only in your browser's memory. It
+        is not sent to this site and not saved in your browser's storage.
+      </p>
+    </details>
+
+    <details>
+      <summary>How do I set it up?</summary>
+      <p>The wizard asks four things. Enter alone takes the default shown
+        in brackets.</p>
+      <ol>
+        <li>
+          <b>Template.</b> Answer with a number or a name: <code>2</code>
+          or <code>anthropic</code>, <code>3</code> or <code>openai</code>,
+          <code>4</code> or <code>gemini</code>, <code>5</code> or
+          <code>xai</code>. Do not pick 1 here; there is a question about
+          that below.
+        </li>
+        <li>
+          <b>Startup profile</b>, or <b>Model id</b> depending on the
+          provider. The default is a sensible current model, so Enter is a
+          fine answer.
+        </li>
+        <li>
+          <b>API key file path.</b> Press Enter. The default is a path
+          inside the emulated machine, under
+          <code>/root/.secrets/</code>.
+        </li>
+        <li>
+          <b>Paste your API key.</b> This is the hidden prompt. Paste the
+          key, then press Enter.
+        </li>
+      </ol>
+      <p>
+        Then type <code>temur</code> to start the agent, or
+        <code>temur doctor</code> to check the configuration and the
+        connection first.
+      </p>
+    </details>
+
+    <details>
+      <summary>Pasting does not seem to do anything</summary>
+      <p>
+        Paste with <b>Ctrl-Shift-V</b>. In a terminal, plain Ctrl-V is not
+        a paste command at all: it sends a single control character to the
+        program you are talking to. At the key prompt the terminal is not
+        showing you what it receives, so a plain Ctrl-V looks exactly like
+        nothing happening, and you can end up with a key that is wrong in a
+        way you never saw.
+      </p>
+    </details>
+
+    <details>
+      <summary>I pasted my key and nothing appeared</summary>
+      <p>
+        That is correct, and it is not a hang. The key prompt turns the
+        terminal's echo off, so there are no characters, no dots and no
+        length to look at while you type or paste. Press Enter. temur then
+        prints a line confirming that the key was saved, and it never
+        prints the key itself.
+      </p>
+    </details>
+
+    <details>
+      <summary>How do I get out of a question?</summary>
+      <p>
+        Ctrl-C at any ordinary question leaves the wizard and puts you at
+        the shell prompt, where <code>temur init</code> starts it again.
+        At the hidden key prompt, Ctrl-C is ignored on purpose: echo is
+        off there, and a Ctrl-C at that moment could leave you at a
+        terminal that has quietly stopped showing what you type. To get
+        past the key question without answering it, press Enter on the
+        empty line.
+      </p>
+    </details>
+
+    <details>
+      <summary>How do I change the key, or use a different provider?</summary>
+      <p>
+        Run <code>temur init --force</code>. It rewrites the
+        configuration, but it will deliberately not overwrite a key file
+        that already has a key in it: it prints a line saying the key file
+        already exists and was left untouched, and then does not ask you
+        for a key at all. If you are replacing a key, delete the file
+        first and then run the wizard again:
+      </p>
+      <p><code>rm /root/.secrets/temur-anthropic-key</code></p>
+      <p>
+        Each provider keeps its key in its own file, so moving to a
+        different provider does not need the old one deleted.
+      </p>
+    </details>
+
+    <details>
+      <summary>Why not template 1, the local one?</summary>
+      <p>
+        Template 1 points temur at a model server running on the same
+        machine, which is how you would run it against llama.cpp on a real
+        computer, with no key and no provider. In this tab there is
+        nothing listening at that address, so temur would have nothing to
+        talk to. Pick one of the hosted providers instead.
+      </p>
+    </details>
+
+    <details>
+      <summary>What do "Networked tier" and "OFFLINE TIER" mean?</summary>
+      <p>
+        Networked tier is the working state: the emulated machine can
+        reach the provider you picked, through a relay that carries the
+        traffic without being able to read it. OFFLINE TIER means no relay
+        could be reached, so this machine has no network at all. temur
+        still runs and everything local to the machine still works, but
+        any request to a hosted provider will fail. Reloading the page
+        later is worth a try.
+      </p>
+    </details>
+
+    <details>
+      <summary>What happens when I close the tab?</summary>
+      <p>
+        The whole computer stops existing, along with its files, the
+        configuration you just made, and your key. Nothing is written to
+        your own disk and nothing is kept here, which is why you have to
+        type the key again next time.
+      </p>
+    </details>
+  </section>
 
   <div id="trust">
     <h2>Where your key goes <span class="draft">[DRAFT - pending review]</span></h2>
