@@ -166,6 +166,10 @@ plus up to streamsPerConnection upstream sockets, so the concurrent cap
 multiplies by 17, and systemd's default soft limit is 1024. At that
 default the relay would run out of descriptors long before it ran out of
 memory, under load, which is the least legible failure it could have.
+The relay reads this limit at startup and REFUSES TO START if it is
+below what its configured ceiling needs, so a box that never got this
+line, or lost it to a later edit, fails loudly at start with the fix in
+the message rather than quietly at the worst possible moment.
 
 RELAY_TRUST_PROXY=1 is required here and ONLY here. Without it every
 visitor arrives as 127.0.0.1 from Caddy and they all share one rate-limit

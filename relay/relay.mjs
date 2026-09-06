@@ -278,7 +278,9 @@ const ADDRESS_MAP = new Map([
 //   systemd gives a service a SOFT limit of 1024 by default, which held
 //   this to 48. The unit now sets LimitNOFILE=8192 (see
 //   docs/VPS-RUNBOOK.md section 3), so 96 x 17 = 1632 against 8192 is
-//   comfortable.
+//   comfortable. The two numbers move together or not at all: the
+//   startup check below refuses to run if the box does not actually
+//   provide the descriptors this ceiling assumes.
 //
 //   96 RATHER THAN 128, which is desktop planning's call and its
 //   reasoning: the ~1 MB per loaded visitor above is REASONED and not
@@ -294,6 +296,94 @@ const LIMITS = {
   wsConcurrentPerIp: 24, // simultaneous wisp websockets per client IP
   wsConcurrentTotal: 96, // simultaneous wisp websockets, WHOLE RELAY
 };
+
+// --- does this box actually have the descriptors above? ---------------
+//
+// ADDED BY LAPTOP PLANNING, NOT PART OF DESKTOP'S RULING. Recorded here
+// because a reader should be able to tell an ordered change from an
+// added one.
+//
+// THE TWO HALVES OF THE CEILING LIVE IN DIFFERENT PLACES. The cap is in
+// this file, in this repository. The descriptor limit that makes it
+// survivable is a LimitNOFILE line in a unit file on a machine no
+// session can see. Nothing keeps them together: a box whose unit
+// predates that line, or was hand-edited, or was rebuilt from an older
+// snapshot, will happily run a relay configured for 96 visitors against
+// a limit that supports 48. It will not complain at startup. It will
+// fail as descriptor exhaustion under load, which is the worst moment
+// and the least legible symptom this service has.
+//
+// So the relay checks at startup and refuses. That is the same idiom as
+// the missing stamp above: refusing beats starting in a state whose
+// answer to an obvious question is "unknown".
+
+// Descriptors this process needs BEYOND the connection arithmetic: the
+// listening socket, stdio, node's own handles, and slack so that a
+// burst of half-open sockets during a reconnect storm does not tip a
+// relay over the edge it was sitting exactly on. It is an allowance,
+// deliberately generous and deliberately a named constant rather than a
+// number buried in an expression; it is not a measurement.
+const FD_ALLOWANCE = 64;
+
+// One client socket plus at most streamsPerConnection upstream sockets,
+// per visitor, for as many visitors as the ceiling allows.
+const FD_REQUIRED = LIMITS.wsConcurrentTotal * (1 + LIMITS.streamsPerConnection) + FD_ALLOWANCE;
+
+// The EFFECTIVE (soft) limit, which is the one that bites. /proc is the
+// only place a node process can read this without an addon, so off
+// Linux there is nothing to read and the check is SKIPPED WITH A NOTE
+// rather than guessed at.
+function readSoftNofile() {
+  let text;
+  try {
+    text = fs.readFileSync("/proc/self/limits", "utf8");
+  } catch (e) {
+    return null;
+  }
+  for (const line of text.split("\n")) {
+    if (!line.startsWith("Max open files")) continue;
+    const cols = line.slice("Max open files".length).trim().split(/\s+/);
+    if (!cols.length) return null;
+    if (cols[0] === "unlimited") return Infinity;
+    const n = Number(cols[0]);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+const FD_SOFT = readSoftNofile();
+if (FD_SOFT === null) {
+  console.error(
+    "relay: NOTE: cannot read /proc/self/limits, so the descriptor check " +
+      "is skipped. This is expected off Linux. On the deployment host it " +
+      "is not, and a relay whose descriptor limit is unknown is one " +
+      "concurrency spike from an unreadable failure.",
+  );
+} else if (FD_SOFT < FD_REQUIRED) {
+  console.error(
+    "relay: REFUSING TO START. This process may open " +
+      FD_SOFT +
+      " file descriptors, and its configured ceiling needs " +
+      FD_REQUIRED +
+      ".\n" +
+      "    wsConcurrentTotal " +
+      LIMITS.wsConcurrentTotal +
+      " x (1 client + " +
+      LIMITS.streamsPerConnection +
+      " streams) + " +
+      FD_ALLOWANCE +
+      " allowance = " +
+      FD_REQUIRED +
+      "\n" +
+      "THE FIX is LimitNOFILE in the systemd unit:\n" +
+      "    LimitNOFILE=8192\n" +
+      "in [Service] in /etc/systemd/system/temur-relay.service, then\n" +
+      "    sudo systemctl daemon-reload && sudo systemctl restart temur-relay\n" +
+      "See docs/VPS-RUNBOOK.md section 3. Starting anyway would mean " +
+      "running out of descriptors under load instead of here.",
+  );
+  process.exit(5);
+}
 
 // wisp-js's own filter is the FIRST of two gates: it restricts what the
 // guest may ask for to exactly the mapped synthetic addresses. The second
@@ -644,6 +734,10 @@ server.listen(PORT, HOST, () => {
     allowlist: ALLOWED_HOSTS.map(String),
     address_map: Object.fromEntries(ADDRESS_MAP),
     limits: LIMITS,
+    // The real number off the real box, so a deploy report can quote it
+    // rather than assume the unit was applied.
+    nofile_soft: FD_SOFT === null ? "unreadable" : FD_SOFT === Infinity ? "unlimited" : FD_SOFT,
+    nofile_required: FD_REQUIRED,
     commit: build.commit,
     unstamped: build.unstamped === true || undefined,
     wisp_js: wispJs.version,

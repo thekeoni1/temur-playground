@@ -36,6 +36,12 @@ const CLOSE_AT_CAPACITY = 4003;
 // Must match LIMITS.wsConcurrentTotal in relay.mjs.
 const CONCURRENT_TOTAL = Number(process.argv[3] || 96);
 
+// Must match FD_ALLOWANCE in relay.mjs. The required count is derived
+// the same way the relay derives it, so a change to either cap moves
+// this expectation with it.
+const FD_ALLOWANCE = 64;
+const FD_REQUIRED = CONCURRENT_TOTAL * (1 + 16) + FD_ALLOWANCE;
+
 const CLIENT_A = "203.0.113.7"; // RFC 5737 TEST-NET-3
 const CLIENT_B = "198.51.100.9"; // RFC 5737 TEST-NET-2
 
@@ -108,6 +114,38 @@ function openDead(port) {
     ws.on("close", (code) => done({ opened: false, code }));
     ws.on("error", () => done({ opened: false, code: 1006 }));
     setTimeout(() => done({ opened: false, code: 0 }), 5000);
+  });
+}
+
+// Start the relay under a GENUINELY lowered descriptor limit. Not a
+// stubbed reader and not an injected value: ulimit in a real shell, so
+// what the relay reads out of /proc/self/limits is what the kernel
+// actually enforces on it.
+function startWithNofile(port, soft) {
+  return new Promise((resolve) => {
+    const child = spawn(
+      "/bin/sh",
+      ["-c", "ulimit -n " + soft + "; exec " + process.execPath + " " + RELAY],
+      {
+        env: { ...process.env, RELAY_HOST: "127.0.0.1", RELAY_PORT: String(port) },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    let buf = "";
+    const onData = (d) => {
+      buf += d.toString();
+      if (buf.includes('"relay_start"')) {
+        child.kill("SIGKILL");
+        resolve({ started: true, exit: null, out: buf });
+      }
+    };
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    child.on("exit", (code) => resolve({ started: false, exit: code, out: buf }));
+    setTimeout(() => {
+      child.kill("SIGKILL");
+      resolve({ started: false, exit: null, out: buf });
+    }, 10000);
   });
 }
 
@@ -229,6 +267,68 @@ async function main() {
     } catch (e) {}
   }
   await wait(600);
+
+  // THE DESCRIPTOR CHECK, both ways, with a real limit rather than a
+  // stubbed reader. The cap in this repository and the LimitNOFILE line
+  // in a unit file on the deployment host can come apart without anyone
+  // noticing, and the failure that follows is descriptor exhaustion
+  // under load. These prove the relay notices at startup instead.
+  const lowPort = await freePort();
+  const low = await startWithNofile(lowPort, 256);
+  record(
+    !low.started && low.exit === 5,
+    "a descriptor limit below what the ceiling needs REFUSES THE START",
+    "started " + low.started + ", exit " + low.exit,
+  );
+  record(
+    low.out.includes("REFUSING TO START") &&
+      low.out.includes("LimitNOFILE") &&
+      low.out.includes(String(FD_REQUIRED)),
+    "the refusal names the limit found, the limit needed, and the fix",
+    "names LimitNOFILE and " + FD_REQUIRED + ": " +
+      (low.out.includes("LimitNOFILE") && low.out.includes(String(FD_REQUIRED))),
+  );
+
+  // systemd's own default, which is the case this actually guards.
+  const defPort = await freePort();
+  const dflt = await startWithNofile(defPort, 1024);
+  record(
+    !dflt.started && dflt.exit === 5,
+    "systemd's DEFAULT soft limit of 1024 is refused, which is the case this guards",
+    "started " + dflt.started + ", exit " + dflt.exit,
+  );
+
+  // And the boundary, so the comparison is not off by one in either
+  // direction.
+  const okPort = await freePort();
+  const atReq = await startWithNofile(okPort, FD_REQUIRED);
+  record(
+    atReq.started === true,
+    "exactly the required number of descriptors STARTS",
+    "started " + atReq.started + " at " + FD_REQUIRED,
+  );
+  const underPort = await freePort();
+  const under = await startWithNofile(underPort, FD_REQUIRED - 1);
+  record(
+    !under.started && under.exit === 5,
+    "one descriptor short refuses",
+    "started " + under.started + " at " + (FD_REQUIRED - 1),
+  );
+
+  // A generous limit must both start AND report the real number, so a
+  // deploy report can quote the box rather than assume the unit landed.
+  const genPort = await freePort();
+  const gen = await startWithNofile(genPort, 8192);
+  let reported = null;
+  try {
+    const line = gen.out.split("\n").find((l) => l.includes('"relay_start"'));
+    reported = JSON.parse(line.slice(line.indexOf("{"))).nofile_soft;
+  } catch (e) {}
+  record(
+    gen.started === true && reported === 8192,
+    "LimitNOFILE=8192 starts, and relay_start reports the real limit it found",
+    "started " + gen.started + ", nofile_soft reported " + reported,
+  );
 
   // The log still says everything it used to, plus the code.
   const log = relay.out();
