@@ -3,9 +3,11 @@
 This repository is MIT (see LICENSE), except the `relay/` subtree, which
 is AGPL-3.0-only (see relay/LICENSE and relay/README.md).
 
-It redistributes or vendors the following third-party works. Versions
-are the ones pinned in package-lock.json and relay/package.json; the
-full licence texts are reproduced below.
+It redistributes or vendors the following third-party works. For the npm
+packages, versions are the ones pinned in package-lock.json and
+relay/package.json, and the full licence texts are reproduced below. The
+guest artifacts have their own section further down, with their versions
+read from the shipped binaries and their licence texts in licenses/.
 
   v86                        0.5.458+gd96be77   BSD-2-Clause
     The x86 emulator the page runs. Its build output (libv86.js,
@@ -28,19 +30,95 @@ full licence texts are reproduced below.
     the relay's probes.
     https://github.com/websockets/ws
 
-Two further things the guest image contains are not npm packages and
-carry their own terms:
+## The guest artifacts, which are binaries we redistribute
 
-  SeaBIOS / VGABIOS (bios/seabios.bin, bios/vgabios.bin) are the blobs
-  shipped with v86 and are covered by that project's distribution; see
-  the v86 repository.
+The rest of the guest is not npm packages. It is compiled software under
+copyleft licences, and WE PUBLISH THE BINARIES, so those licences attach
+to what this repository serves rather than to something upstream. They
+are named here by artifact, because a notice that says "the guest image"
+does not tell a reader which file carries which obligation.
 
-  The Linux kernel and BusyBox userspace in the guest image are built
-  from Buildroot 2026.02.3 (Linux 6.19.14, GPL-2.0; BusyBox, GPL-2.0).
-  The exact configurations that produced them are committed as
-  kit/buildroot.config, kit/kernel-p*.config and
-  kit/linux-i686-v86-p*.config, and the build tree is reproducible from
-  them; see reports/P1.md and reports/P2.md.
+  Linux kernel             6.19.14                  GPL-2.0
+    kit/bzImage, kit/bzImage-p2, kit/bzImage-p3, kit/bzImage-p4
+    https://www.kernel.org
+
+  BusyBox                  1.37.0                   GPL-2.0
+    The userspace in kit/rootfs.cpio.gz. The binary says so itself:
+    "BusyBox v1.37.0 (2026-09-04 20:33:13 EDT)".
+    https://busybox.net
+
+  SeaBIOS / SeaVGABIOS     rel-1.16.2-0-gea1b7a0    LGPL-3.0
+    bios/seabios.bin and bios/vgabios.bin, which tools/stage-page.sh
+    copies into page/vendor/, so these are the ones the PAGE ships.
+    kit/seabios.bin and kit/vgabios.bin are the harness's copies and are
+    byte for byte the same files:
+      seabios.bin  sha256 73e3f359102e3a9982c35fce98eb7cd08f18303ac7f1ba6ebfbe6cdc1c244d98
+      vgabios.bin  sha256 a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880
+    The version string is read out of seabios.bin itself. The VGA BIOS
+    is vgasrc/ in the same source tree.
+    https://www.seabios.org
+
+  THE TWO SERVED SNAPSHOTS CARRY ALL OF THE ABOVE:
+
+    page/assets/state-page.bin.gz
+    page/assets/state-p5-page.bin.gz
+
+  They are memory images of the running machine, so they CONTAIN the
+  kernel and the BusyBox userspace in executable form. Serving them from
+  the page is distribution of those binaries exactly as much as shipping
+  bzImage is, and the GPL-2.0 obligations below are what that means in
+  practice. They are the reason this section exists.
+
+  Licence texts: licenses/GPL-2.0.txt for the kernel and BusyBox,
+  licenses/LGPL-3.0.txt for SeaBIOS. LGPLv3 is written as a set of
+  additional permissions on top of GPLv3 and does not stand alone, so
+  licenses/GPL-3.0.txt is included with it. That is also why SeaBIOS's
+  own COPYING at rel-1.16.2 contains the GPLv3 text while COPYING.LESSER
+  contains the LGPLv3: a reader who checks only COPYING will think it is
+  GPLv3, and it is not. Its sources say what they are, for example
+  vgasrc/vgabios.c: "This file may be distributed under the terms of the
+  GNU LGPLv3 license."
+
+### Written offer of source, for the binaries above
+
+A configuration file identifies a build. It is not the corresponding
+source, so the source is named here and offered outright.
+
+  Linux 6.19.14
+    https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-6.19.14.tar.xz
+  BusyBox 1.37.0
+    https://busybox.net/downloads/busybox-1.37.0.tar.bz2
+  Buildroot 2026.02.3, which built both
+    https://buildroot.org/downloads/buildroot-2026.02.3.tar.gz
+  SeaBIOS rel-1.16.2
+    https://github.com/coreboot/seabios/archive/refs/tags/rel-1.16.2.tar.gz
+
+WE DID NOT PATCH ANY OF THAT SOURCE. The kernel, BusyBox and SeaBIOS are
+stock upstream at those versions. What is ours is configuration, and it
+is committed here rather than described:
+
+  kit/buildroot.config                 the Buildroot configuration,
+                                       which also pins Linux 6.19.14
+  kit/kernel.config                    the generated kernel .config for
+  kit/kernel-p2.config                 each guest, as built
+  kit/kernel-p3.config
+  kit/kernel-p4.config
+  kit/linux-i686-v86-p2.config         the sparse fragments those were
+  kit/linux-i686-v86-p3.config         generated from, by olddefconfig
+  kit/linux-i686-v86-p4.config
+
+Upstream tarball plus the committed configuration is what reproduces the
+binaries we publish; reports/P1.md and reports/P2.md describe the build.
+
+THE OFFER. For any binary named in this section, we will provide the
+complete corresponding source, on request, for at least three years from
+the date it was distributed. In the ordinary case you do not need to ask
+us: the upstream URLs above are the source, the configuration is in this
+public repository, and between them you have everything. If an upstream
+URL has gone away, or you would rather have the exact tree we built
+from, open an issue at
+https://github.com/thekeoni1/temur-playground/issues and ask; a copy on
+a physical medium is available on the same terms if you want one.
 
   The temur binary in artifacts/ is the published v0.33.0 i686 release,
   MIT, unmodified; see artifacts/PROVENANCE.md.
