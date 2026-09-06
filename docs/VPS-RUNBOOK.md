@@ -1,8 +1,10 @@
-# Relay VPS runbook (written, NOT run)
+# Relay VPS runbook (section 0 run, sections 1 to 6 NOT run)
 
-The exact steps the operator executes on the relay host. Nothing here has
-been run: P3b-prep is local commits only, and every step below needs
-credentials or a machine no session has. Sessions prepare and verify;
+The exact steps the operator executes on the relay host. SECTION 0's
+prerequisites have now been run by hand on the real box, on 2026-09-05,
+and are recorded below as they were typed, with the versions that were
+actually observed. SECTIONS 1 TO 6 HAVE NOT BEEN RUN. They still need
+credentials or a step no session has taken; sessions prepare and verify,
 the operator types anything credentialed.
 
 Target shape, from the brief: the page is on Cloudflare Pages at
@@ -18,13 +20,74 @@ dashboard and there is nothing here to deploy for it.
 
 ## 0. Before anything
 
+THE BOX: Ubuntu 24.04.4 LTS (noble), kernel 6.17.0-1019-aws, on AWS
+Lightsail, the 512 MB bundle. The runbook named no operating system at
+all before this; it names one now, because every prerequisite below is
+an apt step and the swap note depends on how much memory the bundle has.
+
 - DNS: relay.temur.live must be an A record to the VPS, DNS-only (grey
   cloud in Cloudflare), or Caddy cannot get a certificate and the
   "no third party in the ciphertext path" claim is not true.
-- Ports 80 and 443 open. Nothing else. The relay itself never listens on
-  a public interface.
+- Ports 80 AND 443 open inbound at the PROVIDER'S firewall, before
+  section 4. Both, not just 443: Caddy obtains its certificate over
+  those ports, so a box reachable on only one of them does not get a
+  certificate and section 4 fails with nothing obviously wrong on the
+  box itself. Nothing else is opened. The relay never listens on a
+  public interface.
 - Node 24. The relay has only ever been run on 24.20.0; relay/package.json
   declares `"engines": { "node": ">=24" }`.
+
+### Prerequisites, as executed on the box on 2026-09-05
+
+These ran, and their output was observed. They are recorded as typed
+rather than tidied up, so that what is written here is what happened.
+
+NODE, from NodeSource:
+
+    curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    node -v; command -v node
+
+Observed: `v24.20.0` and `/usr/bin/node`.
+
+THE PATH IS A PRECONDITION, NOT A COURTESY CHECK. The systemd unit in
+section 3 hardcodes `ExecStart=/usr/bin/node`, so `command -v node`
+printing exactly /usr/bin/node is what makes that unit correct. If it
+prints anything else, section 3 is what has to change, and the failure
+if it does not is a service that will not start.
+
+CADDY, from the Cloudsmith stable repository:
+
+    sudo apt-get install -y debian-keyring debian-archive-keyring \
+      apt-transport-https
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+      | sudo gpg --dearmor \
+      -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+      | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+    sudo apt-get update && sudo apt-get install -y caddy
+    caddy version
+
+Observed: `v2.11.4`. The debian-named keyring packages and list file are
+upstream Caddy's own instructions and are correct on Ubuntu; they are
+not a sign that the wrong repository was used.
+
+SIDE EFFECT, AND IT IS EXPECTED: installing the package enables and
+starts caddy.service with a default configuration, which takes ports 80
+and 443 immediately. Section 4 replaces that configuration, so nothing
+needs undoing first, but a port 80 that looks occupied before section 4
+is this and not a problem.
+
+SWAP, on a host with less than 1 GB of RAM. The 512 MB bundle has 414 MB
+usable, and `npm ci` in section 2 is a coin flip without swap. As
+executed:
+
+    sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile \
+      && sudo mkswap /swapfile && sudo swapon /swapfile
+    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+    free -m
+
+A host with 1 GB or more does not need this step.
 
 ## 1. The code, at the published commit
 
