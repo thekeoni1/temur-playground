@@ -120,8 +120,49 @@ from, open an issue at
 https://github.com/thekeoni1/temur-playground/issues and ask; a copy on
 a physical medium is available on the same terms if you want one.
 
-  The temur binary in artifacts/ is the published v0.33.0 i686 release,
-  MIT, unmodified; see artifacts/PROVENANCE.md.
+### The temur binary in artifacts/
+
+artifacts/temur-v0.33.0-i686-unknown-linux-musl is the published v0.33.0
+i686 release, MIT, unmodified; see artifacts/PROVENANCE.md.
+
+IT IS STATICALLY LINKED AGAINST MUSL, so unlike a dynamically linked
+binary it carries its compiled Rust dependencies inside it, under their
+own terms. Redistributing it therefore carries their notice obligations
+in the same way that redistributing seabios.bin carries SeaBIOS's, and
+naming only temur's own MIT would describe a fraction of what is in the
+file.
+
+  Source, at the exact release this binary was built from:
+    https://github.com/thekeoni1/Temur/tree/v0.33.0
+
+  Dependency inventory, the lockfile at that tag:
+    https://github.com/thekeoni1/Temur/blob/v0.33.0/Cargo.lock
+
+WHO CHECKED WHAT, because these are two different claims and only one of
+them was checked here.
+
+  VERIFIED IN THIS REPOSITORY'S PASS: Cargo.lock at tag v0.33.0 holds
+  143 [[package]] entries. One of them is temur itself, so 142 are
+  dependencies. That lockfile is byte-identical to the one at the commit
+  this work was done against.
+
+  DESKTOP PLANNING, 2026-09-06: 107 crates are LINKED into the release
+  binary, and all of them are under permissive licences, with no
+  copyleft among them. The two counts are not in conflict: a lockfile
+  records everything resolved, including dev-only and build-only
+  dependencies that never reach the binary, while the linked count
+  excludes them.
+
+  NOT CHECKED HERE, and deliberately not restated as ours: THE LICENCE
+  POSITION ITSELF. A Cargo.lock records names and versions and no
+  licence at all, so nothing in this repository can confirm or refute
+  the permissive finding. A reader who wants to check it has the tag and
+  the lockfile above and can resolve the licences from them.
+
+A generated notices file, listing each linked crate with its licence
+text, is the complete answer and is planned separately. This entry is a
+pointer, and says so rather than implying an audit that has not been
+published.
 
 --------------------------------------------------------------------
 v86 - BSD-2-Clause
