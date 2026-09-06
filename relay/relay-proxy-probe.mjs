@@ -52,6 +52,17 @@ function startRelay(port, trustProxy) {
 }
 
 // One upgrade attempt, carrying an X-Forwarded-For as a proxy would.
+//
+// OPENING IS NO LONGER THE SAME AS BEING ACCEPTED. A refusal now
+// completes the handshake and then closes with a private code, so that
+// the page can tell a limit from an outage (see refuseUpgrade in
+// relay.mjs). A probe that resolved on "open" therefore counted every
+// refusal as an acceptance and this file reported 0/2 the moment the
+// relay started explaining itself. Held for a grace period instead: a
+// connection counts as accepted only if it is still open at the end of
+// it.
+const ACCEPT_GRACE_MS = 400;
+
 function openWs(port, xff) {
   return new Promise((resolve) => {
     const ws = new WebSocket("ws://127.0.0.1:" + port + "/", {
@@ -64,9 +75,9 @@ function openWs(port, xff) {
         resolve(v);
       }
     };
-    ws.on("open", () => done({ ok: true, ws }));
+    ws.on("open", () => setTimeout(() => done({ ok: true, ws }), ACCEPT_GRACE_MS));
     ws.on("error", () => done({ ok: false }));
-    ws.on("close", () => done({ ok: false }));
+    ws.on("close", (code) => done({ ok: false, code }));
     setTimeout(() => done({ ok: false }), 5000);
   });
 }

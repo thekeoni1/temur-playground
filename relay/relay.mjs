@@ -25,6 +25,7 @@ import path from "path";
 import { createRequire } from "module";
 import { pathToFileURL } from "url";
 import { server as wisp } from "@mercuryworkshop/wisp-js/server";
+import { WebSocketServer } from "ws";
 
 // --- the one deep import, asserted -----------------------------------
 //
@@ -432,21 +433,95 @@ class CountingTCPSocket extends NodeTCPSocket {
 const recent = new Map(); // ip -> number[] (timestamps)
 const live = new Map(); // ip -> count
 
+// REFUSAL IS A MESSAGE, NOT A DISCONNECT.
+//
+// This used to be socket.destroy() with no HTTP response written. In a
+// browser that is close code 1006 with no reason, which is BYTE FOR BYTE
+// what a relay that is not running looks like, so a visitor turned away
+// by a limit and a visitor facing an outage saw exactly the same thing
+// and the page could not tell them apart.
+//
+// Writing an HTTP 429 before destroying does not fix it either: the
+// browser does not expose a failed handshake's status to script. What IS
+// visible to script is a CloseEvent, so the refusal completes the
+// websocket handshake and then closes with a private close code and a
+// short reason. The page reads the code and says something true.
+//
+// 4000-4999 is the private range reserved for application use. These
+// codes are page-facing contract: page/app.js maps them to the message a
+// visitor reads, so do not renumber them without changing that too.
+const CLOSE_SHARED_ADDRESS = 4001; // this address holds too many at once
+const CLOSE_SHARED_RATE = 4002; // this address opened too many too fast
+
+// The reason string travels in the close frame and is capped at 123
+// bytes by the protocol. It is diagnostic, not visitor copy: the page
+// writes the visitor's wording from the CODE, so a reason that changes
+// breaks nothing.
 function allowUpgrade(ip) {
   const now = Date.now();
   const hits = (recent.get(ip) || []).filter((t) => now - t < 60000);
   hits.push(now);
   recent.set(ip, hits);
   if (hits.length > LIMITS.wsPerIpPerMinute) {
-    return { ok: false, why: "rate: >" + LIMITS.wsPerIpPerMinute + "/min" };
+    return {
+      ok: false,
+      why: "rate: >" + LIMITS.wsPerIpPerMinute + "/min",
+      code: CLOSE_SHARED_RATE,
+      reason: "shared address: too many new connections",
+    };
   }
   if ((live.get(ip) || 0) >= LIMITS.wsConcurrentPerIp) {
     return {
       ok: false,
       why: "concurrent: >=" + LIMITS.wsConcurrentPerIp,
+      code: CLOSE_SHARED_ADDRESS,
+      reason: "shared address: too many connections at once",
     };
   }
   return { ok: true };
+}
+
+// The refusal handshake. noServer, so it never listens on anything: it
+// exists only to turn an upgrade into a websocket long enough to say why
+// it is closing.
+const refusalWss = new WebSocketServer({ noServer: true });
+
+// THE REFUSAL MUST STAY CHEAP. It completes a handshake and nothing
+// else: no wisp session, no ServerConnection, no upstream dial. It also
+// must not consume the slot it is refusing for, which is why `live` is
+// incremented on the ACCEPTED path below and never here, and why the
+// socket is torn down on a timer rather than left to the client.
+function refuseUpgrade(req, socket, head, verdict, ip, source) {
+  logLine({
+    event: "upgrade_refused",
+    ip,
+    ip_source: source,
+    why: verdict.why,
+    close_code: verdict.code,
+  });
+  let handed = false;
+  // If the handshake cannot be completed for any reason, fall back to
+  // the old behaviour rather than leaking the socket.
+  const giveUp = setTimeout(() => {
+    if (!handed) socket.destroy();
+  }, 2000);
+  try {
+    refusalWss.handleUpgrade(req, socket, head, (ws) => {
+      handed = true;
+      clearTimeout(giveUp);
+      ws.close(verdict.code, verdict.reason);
+      // A client that ignores the close frame does not get to hold the
+      // socket open on the strength of having been refused.
+      setTimeout(() => {
+        try {
+          ws.terminate();
+        } catch (e) {}
+      }, 1000);
+    });
+  } catch (e) {
+    clearTimeout(giveUp);
+    socket.destroy();
+  }
 }
 
 const server = http.createServer((req, res) => {
@@ -484,8 +559,7 @@ server.on("upgrade", (req, socket, head) => {
   const { ip, source } = clientIp(req);
   const verdict = allowUpgrade(ip);
   if (!verdict.ok) {
-    logLine({ event: "upgrade_refused", ip, ip_source: source, why: verdict.why });
-    socket.destroy();
+    refuseUpgrade(req, socket, head, verdict, ip, source);
     return;
   }
 
