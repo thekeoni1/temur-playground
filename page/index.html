@@ -13,7 +13,35 @@
     color: #ccc;
     font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
-  #wrap { padding: 12px; max-width: 1000px; margin: 0 auto; }
+  /* THE COLUMN IS THE TERMINAL, AND THE WHOLE COLUMN CENTRES.
+
+     Centring the wrapper was not enough and shipped looking wrong. #term
+     is a max-content block, so inside a centred 1000px wrapper it sat
+     against the wrapper's left edge: a 704px terminal pinned to the left
+     of a 1000px column, which reads as "not centred" because it is not.
+
+     Centring #term alone would have fixed the terminal and left the
+     notice, status, paste hint, questions and trust block against the
+     left edge, so the page would have been no more balanced, just
+     differently ragged.
+
+     So the grid track is sized to the widest thing in it, which is the
+     terminal, and justify-content centres that track. Everything else
+     is an item in the same track, so the prose now wraps at the
+     terminal's width and every block starts and ends on the same two
+     vertical lines. min-content rather than max-content is what makes
+     that work: a paragraph's max-content is its whole text on one line,
+     which would size the column to the longest sentence on the page.
+
+     This costs nothing at narrow widths: the zoom step-down below
+     shrinks the terminal's laid-out box, the track follows it down, and
+     the text wraps narrower with it. */
+  #wrap {
+    display: grid;
+    grid-template-columns: min-content;
+    justify-content: center;
+    padding: 12px;
+  }
   /* pre-wrap, not pre: the ready line is 52 characters and cannot break,
      so on a narrow screen `pre` made the STATUS the widest thing on the
      page once the terminal had been dealt with. pre-wrap keeps the
@@ -47,7 +75,6 @@
     padding: 10px 12px;
     background: #202020;
     border-left: 3px solid #446;
-    max-width: 78ch;
   }
   #trust h2 { font-size: 13px; margin: 0 0 6px; color: #99a; }
   #stamp {
@@ -64,7 +91,13 @@
      terminal is still the first thing on the page and nothing here
      pushes it down. No script: <details> opens by itself, from a click
      or from Enter and Space on the keyboard. */
-  #faq { margin: 14px 0 0; max-width: 78ch; }
+  /* No max-width on these two any more. 78ch was a reading measure for
+     a 1000px wrapper, where prose would otherwise have run the full
+     width. The column is the terminal now, so a 78ch cap only made the
+     questions and the trust block stop short of the terminal's right
+     edge, which is the raggedness that made the page look uncentred in
+     the first place. The column itself is the measure. */
+  #faq { margin: 14px 0 0; }
   #faq h2 { font-size: 13px; margin: 0 0 6px; color: #99a; }
   #faq details {
     background: #202020;
@@ -82,11 +115,15 @@
     background: #303030;
     border-radius: 3px;
     padding: 0 3px;
-    /* break-word, not break-all: break-all splits every long-ish token,
-       so "openai" came out as "opena i" on a narrow screen. This breaks
-       a word only when it would otherwise overflow, which in practice
-       means the key file path and nothing else. */
-    overflow-wrap: break-word;
+    /* anywhere, not break-word, and not break-all. break-all splits
+       every long-ish token, so "openai" came out as "opena i" on a
+       narrow screen. break-word breaks only on overflow but does NOT
+       reduce the element's min-content width, and min-content is now
+       what sizes the column: the key file path would have set a floor
+       under the whole page on a small phone. anywhere breaks on the
+       same condition as break-word and does count against min-content,
+       which is exactly the difference needed here. */
+    overflow-wrap: anywhere;
   }
 
   /* NARROW-VIEWPORT STEP-DOWN.
