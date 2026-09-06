@@ -1,3 +1,11 @@
+// DEPLOY-TIME PROBE. It cannot pass from a build session: proof 2 opens
+// real streams to a real provider endpoint, so it needs live egress
+// that a laptop session does not do, and it fails at "wisp connect
+// failed" without it. It belongs to the deploy plan's step 9
+// rate-limits proof, run against the live relay with the operator
+// present. Left exactly as it is until then: fix-or-retire is a
+// decision for that run, not for a session that cannot execute it.
+//
 // Sandbox P3a: prove the relay's rate limits actually trip.
 //
 // Two limits, two proofs:
