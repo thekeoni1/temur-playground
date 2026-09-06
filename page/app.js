@@ -84,8 +84,37 @@ const NET_NUDGE =
 //
 // The MOTD is printed first so the three commands are on screen above the
 // wizard for anyone who backs out of it with Ctrl-C.
-const LAUNCH_OFFLINE = "TERM=xterm temur\n";
-const LAUNCH_INIT = "cat /etc/temur-motd; TERM=xterm temur init\n";
+// CONSOLE_FIX, and it is not cosmetic: without it the offline tier is
+// unusable for setup.
+//
+// The guest serial console boots with ICRNL OFF (iflag 0x1400), so CR
+// never terminates a `read`. busybox ash's line editor reads CR itself,
+// which is why ordinary shell commands feel completely normal and only
+// prompts break; and because the CR is then STORED rather than
+// discarded, an answer comes back with a trailing CR that presents as a
+// wrong value rather than as a terminal problem. That is the P3a
+// finding, and it was fixed at the source by etc/profile.d/console.sh.
+//
+// THAT FIX ONLY EVER REACHED ONE OF THE TWO SNAPSHOTS. console.sh went
+// into the P5 overlay, which produced the NETWORKED snapshot;
+// tools/stage-page.sh builds the offline snapshot from the P2-era
+// rootfs, which never received it. Every proof since P3a ran on the
+// networked tier, so nothing caught it, and an operator met it on the
+// live page with Enter echoing as ^M.
+//
+// So the page sets it at landing, on BOTH tiers. Same shape as
+// NET_NUDGE above: one idempotent command injected where the guest
+// starts, rather than a 15 MB snapshot rebuild. On the networked tier
+// it is redundant, because console.sh already ran there, and it is
+// carried anyway ON PURPOSE: the page should not depend on which
+// overlay a given snapshot happened to receive, which is exactly the
+// coupling that produced this defect. Rebuilding the offline snapshot
+// so it carries console.sh properly is the structurally cleaner fix and
+// is a separate question.
+const CONSOLE_FIX = "stty icrnl; ";
+
+const LAUNCH_OFFLINE = CONSOLE_FIX + "TERM=xterm temur\n";
+const LAUNCH_INIT = CONSOLE_FIX + "cat /etc/temur-motd; TERM=xterm temur init\n";
 
 // netcheck needs a config for doctor to read, and the snapshot has none
 // on purpose. It writes a THROWAWAY one under a redirected
