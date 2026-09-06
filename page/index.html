@@ -83,9 +83,16 @@
     font-size: 12px;
   }
   #stamp a { color: #89a; }
+  /* The draft marker is DISCLOSURE, not decoration. It used to be a
+     suffix inside the heading, where it wrecked the title; it is a line
+     of its own now, still inside the block so it plainly belongs to
+     this text and cannot be mistaken for a label on the questions
+     below. Deliberately not shrunk into invisibility: the point is that
+     a reader can see this passage is not final. */
   #trust .draft {
     color: #da4;
     font-weight: bold;
+    margin: 10px 0 0;
   }
   /* The questions block. Plain <details>, closed by default, so the
      terminal is still the first thing on the page and nothing here
@@ -166,6 +173,28 @@
     control byte into the machine, and at the hidden key prompt you will
     not see that it did.
   </p>
+
+  <div id="trust">
+    <h2>What the relay can see, and how you can check</h2>
+    <p>
+      Your key is typed into the machine in this tab, never into this
+      page. Requests to your AI provider are encrypted inside that
+      machine before they leave it, and they travel through a relay that
+      can see only which provider you are contacting and how many bytes
+      moved. It cannot read your key, your prompts, or the replies, and
+      it can only reach the handful of AI providers on its allowlist.
+    </p>
+    <p>
+      You do not have to take that on trust. The relay's source is
+      published under the AGPL and linked at the bottom of this page, and
+      both the page and the relay show the exact commit they were built
+      from, so what is running here can be checked against what is
+      published.
+    </p>
+    <p class="draft">
+      [DRAFT - pending review] This wording has not been signed off yet.
+    </p>
+  </div>
 
   <section id="faq">
     <h2>Questions</h2>
@@ -324,35 +353,6 @@
     </details>
   </section>
 
-  <div id="trust">
-    <h2>Where your key goes <span class="draft">[DRAFT - pending review]</span></h2>
-    <p>
-      This page runs a small Linux computer inside your browser. When you
-      type an API key, you are typing it into that computer, at the setup
-      wizard's own hidden prompt, not into this web page: there is no key
-      box on this page, and the page never reads what you type into the
-      terminal. Your key stays in that computer's memory.
-    </p>
-    <p>
-      Requests to your AI provider are encrypted inside that computer
-      before they leave it. They travel through a relay that can see only
-      which provider you are contacting and how many bytes moved. The
-      relay cannot read your key, your prompts, or the replies, and it can
-      only reach the handful of AI providers on its allowlist.
-    </p>
-    <p>
-      You do not have to take that on trust. The relay's source is
-      published under the AGPL and linked at the bottom of this page, and
-      both the page and the relay show the exact commit they were built
-      from, so what is running here can be checked against what is
-      published.
-    </p>
-    <p>
-      Nothing is stored. Close or reload this tab and the computer, its
-      memory, and your key are gone. You will type the key again next
-      time, because there is nowhere for it to have been kept.
-    </p>
-  </div>
 
   <div id="stamp"></div>
 </div>
