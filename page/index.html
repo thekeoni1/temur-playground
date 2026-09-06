@@ -196,6 +196,12 @@
 
     <details>
       <summary>How do I set it up?</summary>
+      <p>
+        The setup wizard is <code>temur init</code>. Sometimes it is
+        already running when you arrive; if you are looking at a shell
+        prompt instead, type it. If temur answers that a config already
+        exists, run <code>temur init --force</code> and it starts.
+      </p>
       <p>The wizard asks four things. Enter alone takes the default shown
         in brackets.</p>
       <ol>
@@ -255,7 +261,9 @@
       <summary>How do I get out of a question?</summary>
       <p>
         Ctrl-C at any ordinary question leaves the wizard and puts you at
-        the shell prompt, where <code>temur init</code> starts it again.
+        the shell prompt, where <code>temur init</code> starts it again,
+        or <code>temur init --force</code> if temur answers that a config
+        already exists.
         At the hidden key prompt, Ctrl-C is ignored on purpose: echo is
         off there, and a Ctrl-C at that moment could leave you at a
         terminal that has quietly stopped showing what you type. To get
