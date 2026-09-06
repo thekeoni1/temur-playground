@@ -25,12 +25,16 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RELAY = path.join(HERE, "relay.mjs");
 
 // Must match LIMITS.wsConcurrentPerIp in relay.mjs.
-const CONCURRENT_PER_IP = Number(process.argv[2] || 8);
+const CONCURRENT_PER_IP = Number(process.argv[2] || 24);
 
 // Must match the CLOSE_* constants in relay.mjs. These are the contract
 // the page reads.
 const CLOSE_SHARED_ADDRESS = 4001;
 const CLOSE_SHARED_RATE = 4002;
+const CLOSE_AT_CAPACITY = 4003;
+
+// Must match LIMITS.wsConcurrentTotal in relay.mjs.
+const CONCURRENT_TOTAL = Number(process.argv[3] || 48);
 
 const CLIENT_A = "203.0.113.7"; // RFC 5737 TEST-NET-3
 const CLIENT_B = "198.51.100.9"; // RFC 5737 TEST-NET-2
@@ -200,6 +204,31 @@ async function main() {
     }
   }
   record(rateCode === CLOSE_SHARED_RATE, "the rate limit refuses with " + CLOSE_SHARED_RATE, "code " + rateCode);
+
+  // THE GLOBAL CAP. Fill it from enough separate addresses that no
+  // per-address cap can be what refuses, then check that the relay says
+  // "at capacity" rather than "shared address": the visitor is told the
+  // same thing, but the operator's log must not blame an address that
+  // did nothing wrong.
+  const spread = [];
+  for (let i = 0; held.length + spread.length < CONCURRENT_TOTAL && i < CONCURRENT_TOTAL; i++) {
+    const r = await openWs(port, "192.0.2." + (10 + i));
+    if (r.held) spread.push(r.ws);
+    else break;
+  }
+  const overall = await openWs(port, "192.0.2.200");
+  record(
+    overall.code === CLOSE_AT_CAPACITY,
+    "at the global cap the relay refuses with " + CLOSE_AT_CAPACITY + ", from an address holding nothing",
+    "code " + overall.code + " reason " + JSON.stringify(overall.reason) +
+      " (live total " + (held.length + spread.length) + ")",
+  );
+  for (const w of spread) {
+    try {
+      w.close();
+    } catch (e) {}
+  }
+  await wait(600);
 
   // The log still says everything it used to, plus the code.
   const log = relay.out();

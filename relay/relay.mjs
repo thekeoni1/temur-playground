@@ -253,11 +253,40 @@ const ADDRESS_MAP = new Map([
 ]);
 
 // Modest, and recorded in the report.
+//
+// THE PER-IP CAPS ARE THE SHARED-ADDRESS CAPS. Everyone behind one
+// office, campus or mobile network arrives as a single address, so 8 at
+// once locked out a whole building after eight people. 24 is the number
+// a shared address can hold; 60/min is the rate it can open them at.
+//
+// THE GLOBAL CAP IS WHAT MAKES THAT SAFE. Without a ceiling, raising a
+// per-IP cap raises the worst case with nothing bounding it at all. The
+// worst case is what a cap is for, so:
+//
+//   MEMORY, measured on node v24.20.0, the version the box runs, as a
+//   PROXY on this laptop because no session can reach the box. The relay
+//   idles at 63.0 MiB RSS and 400 idle wisp connections add 11.5 MB,
+//   about 30 kB each. The relay does NOT terminate TLS (the guest does),
+//   so a stream is a plain socket and its buffers, call it 64 kB, and a
+//   visitor at the full 16 streams is about 1 MB. On 414 MB of usable
+//   RAM, with the OS and Caddy and this process's own 65 MB taken off
+//   and SWAP NOT COUNTED, roughly 129 MB is left for connections. 48
+//   visitors at their worst is about 48 MB of that.
+//
+//   FILE DESCRIPTORS ARE WHAT ACTUALLY BINDS, and this is the reason the
+//   number is 48 rather than something larger. A visitor costs one
+//   client socket plus up to streamsPerConnection upstream sockets: 17.
+//   systemd gives a service a SOFT limit of 1024 by default and the unit
+//   sets no LimitNOFILE, so the ceiling is 1024 descriptors, not memory.
+//   48 x 17 = 816, which fits with room. 64 would be 1088 and would fail
+//   by running out of descriptors long before it ran out of memory.
+//   Raising LimitNOFILE in the unit is what would allow a bigger number.
 const LIMITS = {
   streamsPerConnection: 16, // concurrent streams on one wisp connection
   streamsPerHost: 8, // concurrent streams to any single destination
-  wsPerIpPerMinute: 30, // new wisp websocket connections per client IP
-  wsConcurrentPerIp: 8, // simultaneous wisp websockets per client IP
+  wsPerIpPerMinute: 60, // new wisp websocket connections per client IP
+  wsConcurrentPerIp: 24, // simultaneous wisp websockets per client IP
+  wsConcurrentTotal: 48, // simultaneous wisp websockets, WHOLE RELAY
 };
 
 // wisp-js's own filter is the FIRST of two gates: it restricts what the
@@ -432,6 +461,7 @@ class CountingTCPSocket extends NodeTCPSocket {
 // bounds that, per the brief's per-IP requirement.
 const recent = new Map(); // ip -> number[] (timestamps)
 const live = new Map(); // ip -> count
+let liveTotal = 0; // every live wisp websocket, all addresses
 
 // REFUSAL IS A MESSAGE, NOT A DISCONNECT.
 //
@@ -452,6 +482,7 @@ const live = new Map(); // ip -> count
 // visitor reads, so do not renumber them without changing that too.
 const CLOSE_SHARED_ADDRESS = 4001; // this address holds too many at once
 const CLOSE_SHARED_RATE = 4002; // this address opened too many too fast
+const CLOSE_AT_CAPACITY = 4003; // the whole relay is full, nobody's fault
 
 // The reason string travels in the close frame and is capped at 123
 // bytes by the protocol. It is diagnostic, not visitor copy: the page
@@ -476,6 +507,17 @@ function allowUpgrade(ip) {
       why: "concurrent: >=" + LIMITS.wsConcurrentPerIp,
       code: CLOSE_SHARED_ADDRESS,
       reason: "shared address: too many connections at once",
+    };
+  }
+  // Checked LAST so the log names the per-address cause when that is
+  // what fired. A visitor cannot act on the difference and is told the
+  // same thing either way; the operator reading the log can.
+  if (liveTotal >= LIMITS.wsConcurrentTotal) {
+    return {
+      ok: false,
+      why: "global concurrent: >=" + LIMITS.wsConcurrentTotal,
+      code: CLOSE_AT_CAPACITY,
+      reason: "relay at capacity",
     };
   }
   return { ok: true };
@@ -564,10 +606,12 @@ server.on("upgrade", (req, socket, head) => {
   }
 
   live.set(ip, (live.get(ip) || 0) + 1);
-  logLine({ event: "ws_open", ip, ip_source: source, live: live.get(ip) });
+  liveTotal++;
+  logLine({ event: "ws_open", ip, ip_source: source, live: live.get(ip), live_total: liveTotal });
   socket.on("close", () => {
     live.set(ip, Math.max(0, (live.get(ip) || 1) - 1));
-    logLine({ event: "ws_close", ip, live: live.get(ip) });
+    liveTotal = Math.max(0, liveTotal - 1);
+    logLine({ event: "ws_close", ip, live: live.get(ip), live_total: liveTotal });
   });
 
   wisp.routeRequest(req, socket, head, { TCPSocket: CountingTCPSocket });
