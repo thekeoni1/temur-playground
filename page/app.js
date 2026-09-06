@@ -113,7 +113,39 @@ const NET_NUDGE =
 // is a separate question.
 const CONSOLE_FIX = "stty icrnl; ";
 
-const LAUNCH_OFFLINE = CONSOLE_FIX + "TERM=xterm temur\n";
+// THE OFFLINE LANDING IS A SHELL, not the agent. Starting temur here
+// put the visitor inside the one program that cannot do the thing they
+// came for: it runs, and then every prompt fails because no provider is
+// reachable. A shell is the honest place to arrive.
+//
+// THE GREETING IS COMPOSED HERE RATHER THAN READ FROM /etc/temur-motd,
+// and that is not a preference. The motd DOES NOT EXIST on this
+// snapshot: it went into the P5 overlay, so it reached the networked
+// image and not this one, exactly as console.sh did. `cat
+// /etc/temur-motd` here prints "No such file or directory", which would
+// have made an error message the first thing a visitor read. Checked on
+// the tier rather than assumed.
+//
+// It also must not say what the networked motd says. That one opens
+// with `temur init  set up a provider and enter your API key`, which on
+// this tier is advice to spend time on something that cannot work.
+//
+// `clear` first because the page TYPES this line into the guest, so the
+// guest echoes it: without the clear, a visitor's first screen is five
+// wrapped lines of printf quoting followed by the greeting. The clear
+// runs after the echo and before the output, so what remains is the
+// greeting alone.
+const OFFLINE_MOTD =
+  "clear; printf '%s\\n' " +
+  "'temur in a browser: a throwaway Linux computer in your browser tab.' " +
+  "'' " +
+  "'This one cannot reach an AI provider, so temur will start but cannot' " +
+  "'answer. Run temur doctor to see why. Everything else is an ordinary' " +
+  "'Linux shell, so have a look around.' " +
+  "'' " +
+  "'Paste with Ctrl-Shift-V. Plain Ctrl-V sends a control byte, not a paste.'";
+
+const LAUNCH_OFFLINE = CONSOLE_FIX + OFFLINE_MOTD + "\n";
 const LAUNCH_INIT = CONSOLE_FIX + "cat /etc/temur-motd; TERM=xterm temur init\n";
 
 // netcheck needs a config for doctor to read, and the snapshot has none
