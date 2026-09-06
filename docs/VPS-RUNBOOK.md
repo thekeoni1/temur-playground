@@ -140,6 +140,7 @@ deployment host it should never be.
     ExecStart=/usr/bin/node /srv/relay/app/relay/relay.mjs
     Restart=always
     RestartSec=2
+    LimitNOFILE=8192
     NoNewPrivileges=true
     PrivateTmp=true
     ProtectSystem=strict
@@ -157,6 +158,14 @@ Then:
     sudo systemctl enable --now temur-relay
     sudo systemctl status temur-relay
     curl -s localhost:8089/version
+
+LimitNOFILE=8192 IS LOAD-BEARING, not tidiness, and a future reader
+should not delete it as noise. The relay's ceiling is bound by
+descriptors rather than by memory: every visitor costs one client socket
+plus up to streamsPerConnection upstream sockets, so the concurrent cap
+multiplies by 17, and systemd's default soft limit is 1024. At that
+default the relay would run out of descriptors long before it ran out of
+memory, under load, which is the least legible failure it could have.
 
 RELAY_TRUST_PROXY=1 is required here and ONLY here. Without it every
 visitor arrives as 127.0.0.1 from Caddy and they all share one rate-limit

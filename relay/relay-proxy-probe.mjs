@@ -24,9 +24,9 @@ const RELAY = path.join(HERE, "relay.mjs");
 // is used rather than the per-minute rate because it trips in one
 // decisive step instead of sixty.
 //
-// Two clients at 24 each is 48, which is exactly LIMITS.wsConcurrentTotal,
-// so this scenario sits right at the global cap and would start failing
-// for the wrong reason if either number moved without the other.
+// Two clients at 24 each is 48, comfortably inside
+// LIMITS.wsConcurrentTotal, so nothing here is refused for the global
+// reason when it should be refused for the per-address one.
 const CONCURRENT_PER_IP = Number(process.argv[2] || 24);
 
 const CLIENT_A = "203.0.113.7"; // RFC 5737 TEST-NET-3, both of them

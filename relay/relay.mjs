@@ -273,20 +273,26 @@ const ADDRESS_MAP = new Map([
 //   and SWAP NOT COUNTED, roughly 129 MB is left for connections. 48
 //   visitors at their worst is about 48 MB of that.
 //
-//   FILE DESCRIPTORS ARE WHAT ACTUALLY BINDS, and this is the reason the
-//   number is 48 rather than something larger. A visitor costs one
+//   FILE DESCRIPTORS ARE WHAT BINDS, not memory. A visitor costs one
 //   client socket plus up to streamsPerConnection upstream sockets: 17.
-//   systemd gives a service a SOFT limit of 1024 by default and the unit
-//   sets no LimitNOFILE, so the ceiling is 1024 descriptors, not memory.
-//   48 x 17 = 816, which fits with room. 64 would be 1088 and would fail
-//   by running out of descriptors long before it ran out of memory.
-//   Raising LimitNOFILE in the unit is what would allow a bigger number.
+//   systemd gives a service a SOFT limit of 1024 by default, which held
+//   this to 48. The unit now sets LimitNOFILE=8192 (see
+//   docs/VPS-RUNBOOK.md section 3), so 96 x 17 = 1632 against 8192 is
+//   comfortable.
+//
+//   96 RATHER THAN 128, which is desktop planning's call and its
+//   reasoning: the ~1 MB per loaded visitor above is REASONED and not
+//   measured, so the margin is deliberate. 96 x ~1 MB is about 96 MB
+//   against the ~129 MB measured free, a quarter of 96 answers the
+//   shared-address worry without letting one address dominate, soak is
+//   what validates it, and a later raise is one publish, pull and
+//   restart.
 const LIMITS = {
   streamsPerConnection: 16, // concurrent streams on one wisp connection
   streamsPerHost: 8, // concurrent streams to any single destination
   wsPerIpPerMinute: 60, // new wisp websocket connections per client IP
   wsConcurrentPerIp: 24, // simultaneous wisp websockets per client IP
-  wsConcurrentTotal: 48, // simultaneous wisp websockets, WHOLE RELAY
+  wsConcurrentTotal: 96, // simultaneous wisp websockets, WHOLE RELAY
 };
 
 // wisp-js's own filter is the FIRST of two gates: it restricts what the

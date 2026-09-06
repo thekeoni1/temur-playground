@@ -34,7 +34,7 @@ const CLOSE_SHARED_RATE = 4002;
 const CLOSE_AT_CAPACITY = 4003;
 
 // Must match LIMITS.wsConcurrentTotal in relay.mjs.
-const CONCURRENT_TOTAL = Number(process.argv[3] || 48);
+const CONCURRENT_TOTAL = Number(process.argv[3] || 96);
 
 const CLIENT_A = "203.0.113.7"; // RFC 5737 TEST-NET-3
 const CLIENT_B = "198.51.100.9"; // RFC 5737 TEST-NET-2
