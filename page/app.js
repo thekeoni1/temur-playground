@@ -146,11 +146,33 @@ const term = new Terminal({
 });
 term.open(document.getElementById("term"));
 
-// --- is the relay there? ---------------------------------------------
+// --- is the relay there, and does it want us? -------------------------
 //
-// A plain websocket open attempt. If it fails the page says so and runs
-// the offline tier, rather than booting a networked guest whose requests
-// would all hang.
+// THREE ANSWERS, NOT TWO. "ok", "refused" and "down" are different
+// things and a visitor deserves to be told which one happened.
+//
+// The relay's close codes are the contract (see relay/relay.mjs). A
+// refusal completes the handshake and then closes with one of these, so
+// OPENING IS NOT THE SAME AS BEING ACCEPTED: this used to resolve true
+// the instant the socket opened, which after the relay learned to
+// explain itself would have reported a refused visitor as a working
+// relay and booted them into a networked guest whose every request
+// hangs. So an opened socket is held for a grace period, and only a
+// socket still open at the end of it counts as accepted.
+const CLOSE_SHARED_ADDRESS = 4001;
+const CLOSE_SHARED_RATE = 4002;
+const CLOSE_AT_CAPACITY = 4003;
+
+function isRefusal(code) {
+  return (
+    code === CLOSE_SHARED_ADDRESS || code === CLOSE_SHARED_RATE || code === CLOSE_AT_CAPACITY
+  );
+}
+
+// Long enough for a refusal to arrive from a real relay over a real
+// network, short enough that nobody notices it on the happy path.
+const ACCEPT_GRACE_MS = 400;
+
 function probeRelay(timeoutMs = 2500) {
   return new Promise((resolve) => {
     let done = false;
@@ -164,23 +186,43 @@ function probeRelay(timeoutMs = 2500) {
     try {
       ws = new WebSocket(RELAY_WS);
     } catch (e) {
-      return finish(false);
+      return finish("down");
     }
     ws.onopen = () => {
-      try {
-        ws.close();
-      } catch (e) {}
-      finish(true);
+      setTimeout(() => {
+        if (done) return;
+        try {
+          ws.close();
+        } catch (e) {}
+        finish("ok");
+      }, ACCEPT_GRACE_MS);
     };
-    ws.onerror = () => finish(false);
-    ws.onclose = () => finish(false);
+    ws.onerror = () => finish("down");
+    ws.onclose = (ev) => finish(isRefusal(ev && ev.code) ? "refused" : "down");
     setTimeout(() => {
       try {
         ws.close();
       } catch (e) {}
-      finish(false);
+      finish("down");
     }, timeoutMs);
   });
+}
+
+// The one place the shared-address wording lives, so the startup notice
+// and the mid-session banner cannot drift apart.
+//
+// It does not say NAT, or CGNAT, or bucket, and it does not print the
+// cap: the reader is somebody on a company or campus network who has no
+// idea why a stranger's page is turning them away, and the number will
+// change without them.
+function sharedAddressText() {
+  return (
+    "Too many people are using this from your network. The relay is " +
+    "running and this is not a fault: it limits how many connections it " +
+    "will take from any one address at a time, and the address you share " +
+    "with everyone around you is at that limit right now. Waiting a " +
+    "little and reloading usually clears it."
+  );
 }
 
 // --- fetch the snapshot, counting bytes ------------------------------
@@ -236,16 +278,17 @@ function findWispAdapter(emulator) {
 }
 
 function watchRelay(emulator) {
-  const state = { mode: "none", up: true };
+  const state = { mode: "none", up: true, cause: null };
 
-  function lost() {
-    if (!state.up) return;
-    state.up = false;
-    bannerEl.textContent =
-      "Relay connection lost. Requests from the guest will HANG rather " +
-      "than fail: the connection was accepted inside this page before the " +
-      "relay went away, so nothing tells the guest it is gone. Restart the " +
-      "relay and this notice clears, or reload to run the offline tier.";
+  // How long a refusal stays the explanation for a link that is down.
+  // v86 redials every 10 s, so a refusal that is still the reason will
+  // be restated well within this; if it is not, the honest answer
+  // becomes the outage message again.
+  const REFUSAL_MEMORY_MS = 30000;
+  let refusedAt = 0;
+
+  function banner(text) {
+    bannerEl.textContent = text;
     const btn = document.createElement("button");
     btn.textContent = "reload for the offline tier";
     btn.onclick = () => location.reload();
@@ -253,11 +296,83 @@ function watchRelay(emulator) {
     bannerEl.appendChild(btn);
     bannerEl.hidden = false;
   }
+
+  // TWO CAUSES, TWO MESSAGES. Telling a refused visitor that the relay
+  // is down sends them to wait for something that is not broken; telling
+  // an outage that their network is busy sends them to blame their
+  // office wifi. The cause is re-evaluated on every tick, so a link that
+  // goes from refused to genuinely down updates rather than sticking.
+  // THE CLOSE CODE IS AUTHORITATIVE, BUT IT CAN BE MISSED. The poll runs
+  // once a second and v86 builds a fresh socket on each redial, so a
+  // refusal that arrives less than a tick after the socket appears can
+  // close before the listener is on it. Re-probing settles it: a fresh
+  // connection to the SAME origin the page already talks to is either
+  // refused with a code, or it is not, and either way we learn which of
+  // the two messages is the true one.
+  //
+  // Deliberately not a fetch of the relay's /version. That is an https
+  // origin, the shipped CSP allows only wss:// for this host, and
+  // /version sends no CORS header on purpose. Reaching it would mean
+  // widening the policy for a diagnostic, which is a bad trade for the
+  // tightest claim the page makes.
+  const REPROBE_EVERY_MS = 5000;
+  let lastProbe = 0;
+  function reprobe() {
+    const now = Date.now();
+    if (now - lastProbe < REPROBE_EVERY_MS) return;
+    lastProbe = now;
+    probeRelay(2000).then((r) => {
+      if (r === "refused") refusedAt = Date.now();
+    });
+  }
+
+  function down() {
+    if (Date.now() - refusedAt >= REFUSAL_MEMORY_MS) reprobe();
+    const refused = Date.now() - refusedAt < REFUSAL_MEMORY_MS;
+    const cause = refused ? "refused" : "lost";
+    if (!state.up && state.cause === cause) return;
+    state.up = false;
+    state.cause = cause;
+    if (refused) {
+      banner(
+        sharedAddressText() +
+          " The guest's connection is closed while that lasts, so requests " +
+          "to a hosted provider will not go through.",
+      );
+    } else {
+      banner(
+        "Relay connection lost. Requests from the guest will HANG rather " +
+          "than fail: the connection was accepted inside this page before the " +
+          "relay went away, so nothing tells the guest it is gone. Restart the " +
+          "relay and this notice clears, or reload to run the offline tier.",
+      );
+    }
+  }
   function back() {
     if (state.up) return;
     state.up = true;
+    state.cause = null;
+    refusedAt = 0;
     bannerEl.textContent = "";
     bannerEl.hidden = true;
+  }
+  // Kept as the old name so the fallback path below reads the same.
+  const lost = down;
+
+  // Read the close CODE off the guest's own socket, which is the only
+  // place the refusal is stated. addEventListener, never onclose: v86
+  // owns that handler and uses it to redial every 10 s, so assigning to
+  // it would silently break reconnection. v86 replaces the socket object
+  // on each redial, so every new one gets its own listener.
+  let watched = null;
+  function noticeRefusals(ws) {
+    if (!ws || ws === watched) return;
+    watched = ws;
+    try {
+      ws.addEventListener("close", (ev) => {
+        if (isRefusal(ev && ev.code)) refusedAt = Date.now();
+      });
+    } catch (e) {}
   }
 
   const adapter = findWispAdapter(emulator);
@@ -265,8 +380,9 @@ function watchRelay(emulator) {
     state.mode = "adapter-socket";
     setInterval(() => {
       const ws = adapter.wispws;
+      noticeRefusals(ws);
       if (ws && ws.readyState === WebSocket.OPEN) back();
-      else lost();
+      else down();
     }, 1000);
   } else {
     // Fallback only: costs one of the relay's per-IP websocket slots.
@@ -280,7 +396,11 @@ function watchRelay(emulator) {
         return;
       }
       mon.onopen = () => back();
-      mon.onclose = () => { lost(); setTimeout(open, 3000); };
+      mon.onclose = (ev) => {
+        if (isRefusal(ev && ev.code)) refusedAt = Date.now();
+        lost();
+        setTimeout(open, 3000);
+      };
       mon.onerror = () => lost();
     };
     open();
@@ -340,7 +460,8 @@ async function main() {
   const t0 = performance.now();
 
   status("checking for the relay...");
-  networked = await probeRelay();
+  const probe = await probeRelay();
+  networked = probe === "ok";
 
   if (networked) {
     noticeEl.textContent =
@@ -354,6 +475,18 @@ async function main() {
       ", so this guest has no network. temur will run and everything " +
       "local to it works, but any request to a hosted provider will fail. " +
       "Start the relay and reload to use a hosted model.";
+    noticeEl.className = "notice warn";
+  }
+
+  // A refusal is NOT an outage and must not be described as one. The
+  // tier is the same offline tier either way, but the reason is
+  // different and only one of the two is worth waiting out.
+  if (probe === "refused") {
+    noticeEl.textContent =
+      "OFFLINE TIER: " +
+      sharedAddressText() +
+      " Meanwhile everything below still runs: temur starts and works, " +
+      "it just cannot reach a hosted provider.";
     noticeEl.className = "notice warn";
   }
 
