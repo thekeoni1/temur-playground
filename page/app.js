@@ -244,13 +244,15 @@ function probeRelay(timeoutMs = 2500) {
 // cap: the reader is somebody on a company or campus network who has no
 // idea why a stranger's page is turning them away, and the number will
 // change without them.
+//
+// TWO FACTS AND NOTHING ELSE. An earlier version explained the
+// mechanism, reassured the reader it was not their fault, and said what
+// still worked. All true, all cut: this is a banner, and the Q&A now
+// carries the detail it did not carry when this was written.
 function sharedAddressText() {
   return (
-    "Too many people are using this from your network. Nothing is " +
-    "broken, and this is not a fault at your end: the sandbox limits " +
-    "how many connections it takes from any one address at a time, and " +
-    "the address you share with everyone around you is at that limit " +
-    "right now. Waiting a little and reloading usually clears it."
+    "Too many people are using this from your network right now. " +
+    "Waiting a little and reloading usually clears it."
   );
 }
 
@@ -363,11 +365,7 @@ function watchRelay(emulator) {
     state.up = false;
     state.cause = cause;
     if (refused) {
-      banner(
-        sharedAddressText() +
-          " The guest's connection is closed while that lasts, so requests " +
-          "to a hosted provider will not go through.",
-      );
+      banner(sharedAddressText() + " Requests will not go through until then.");
     } else {
       banner(
         "Relay connection lost. Requests from the guest will HANG rather " +
@@ -520,11 +518,7 @@ async function main() {
     // console below rather than into the reader's first sentence.
     noticeEl.textContent =
       "OFFLINE TIER: this sandbox cannot reach an AI provider at the " +
-      "moment. Nothing you did caused it and there is nothing to fix at " +
-      "your end. You do not need an API key here, and setting one up " +
-      "will not make it work. The computer below still runs, and " +
-      "everything inside it still works, so it is worth a look around; " +
-      "trying again later is reasonable.";
+      "moment, so an API key will not help here.";
     noticeEl.className = "notice warn";
     console.info("temur sandbox: offline tier, no relay reachable at " + RELAY_WS);
   }
@@ -533,11 +527,7 @@ async function main() {
   // tier is the same offline tier either way, but the reason is
   // different and only one of the two is worth waiting out.
   if (probe === "refused") {
-    noticeEl.textContent =
-      "OFFLINE TIER: " +
-      sharedAddressText() +
-      " Meanwhile everything below still runs: temur starts and works, " +
-      "it just cannot reach a hosted provider.";
+    noticeEl.textContent = "OFFLINE TIER: " + sharedAddressText();
     noticeEl.className = "notice warn";
   }
 
