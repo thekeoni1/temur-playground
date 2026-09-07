@@ -13,6 +13,23 @@
 // connection metadata (conn id, hostname, port, close reason) and none
 // prints payload, including at debug level.
 //
+// THAT AUDIT ASKED THE WRONG SECOND QUESTION, and this note records the
+// gap rather than quietly closing it. It established that the library
+// logs no payload, which is true, and stopped there. The library also
+// logs an ADDRESS: server/http.mjs create_connection() calls
+//   logging.info(`new connection on ${path} from ${real_ip} ...`)
+// on every connection, and real_ip is not the socket address. wisp-js
+// defaults to parse_real_ip: true with parse_real_ip_from ["127.0.0.1"],
+// which this relay does not override, so BEHIND CADDY it resolves to the
+// X-Forwarded-For first hop: the visitor's real address, at info level,
+// on stdout, into the journal, beside our own deliberately hashed line.
+//
+// So the salted-hash work was only ever half the story, and the runbook's
+// claim that the log is address-hashed and shareable was false while this
+// stood. The library's logger is set to WARN below, immediately after the
+// import, which early-returns info() and keeps warn() and error(). NONE
+// would also silence genuine failures, which is not what we want.
+//
 // BIND ADDRESS. Defaults to 127.0.0.1. In the deployed shape it stays on
 // 127.0.0.1 and Caddy terminates TLS in front of it; see relay/README.md.
 //
@@ -24,9 +41,17 @@ import fs from "fs";
 import path from "path";
 import { createRequire } from "module";
 import { pathToFileURL } from "url";
-import { server as wisp } from "@mercuryworkshop/wisp-js/server";
+import { server as wisp, logging as wispLogging } from "@mercuryworkshop/wisp-js/server";
 import { WebSocketServer } from "ws";
 import crypto from "crypto";
+
+// Silence wisp-js's own info-level connection logger, which prints the
+// visitor's address (see the header note). Set before the server is
+// constructed, so there is no window in which a connection could be
+// logged at the default level. logging is a published export of
+// @mercuryworkshop/wisp-js/server, so this is the supported control and
+// not a second reach into unpublished internals.
+wispLogging.set_level(wispLogging.WARN);
 
 // --- the one deep import, asserted -----------------------------------
 //
@@ -766,7 +791,7 @@ server.listen(PORT, HOST, () => {
     client_ip_source: TRUST_PROXY
       ? "x-forwarded-for last hop when the socket is loopback, else socket"
       : "socket",
-    ip_logging: "per-process salted HMAC-SHA256, first 8 hex; the raw address is never logged and the salt rotates on restart",
+    ip_logging: "per-process salted HMAC-SHA256, first 8 hex; the raw address is never logged and the salt rotates on restart; wisp-js's own connection logger is set to WARN so it cannot print the address either",
     note: "connection-level logging only; payload is never logged",
   });
 });
