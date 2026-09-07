@@ -224,7 +224,62 @@ being true, this flag must come off first. See relay/README.md.
 
 Caddy gets a Let's Encrypt certificate on first request and passes
 WebSocket upgrades through by default; it sets X-Forwarded-For, which is
-what step 3's flag reads. No other configuration is needed.
+what step 3's flag reads.
+
+### CADDY'S ERROR LOG IS THE BIGGER PRIVACY LEAK, and it is on by default
+
+The relay hashes the addresses it logs. Caddy does not, and the log that
+matters here is NOT the access log. The access log is opt-in and off;
+`http.log.error` is ON BY DEFAULT, and every failed request writes a
+full request dump. Observed on this box while the relay was stopped
+during a test:
+
+    remote_ip and client_ip     the raw address, twice
+    remote_port
+    the complete request headers, including User-Agent, Accept-Language,
+      Origin and Sec-Websocket-Key
+    TLS details and the SNI name
+
+That is more identifying than anything the relay ever wrote, and any
+visitor who arrives while the relay is restarting produces one. So the
+same standard applies, and it is applied by discarding that one logger
+while keeping everything else Caddy says:
+
+    {
+        log default {
+            exclude http.log.error
+        }
+        log noerrreq {
+            include http.log.error
+            output discard
+        }
+    }
+
+    relay.temur.live {
+        reverse_proxy 127.0.0.1:8089
+    }
+
+Discarding only `http.log.error` rather than all of Caddy's logging is
+deliberate: certificate renewal failures and startup problems must still
+be visible, and they are not in that logger. The relay's own hashed log
+remains the record of who connected.
+
+VALIDATE BEFORE RELOADING, because a Caddyfile that does not parse takes
+the site down on reload:
+
+    sudo caddy validate --config /etc/caddy/Caddyfile
+    sudo systemctl reload caddy
+
+Then confirm, by stopping the relay briefly and checking that a 502
+produces no request dump:
+
+    sudo journalctl -u caddy --since "5 min ago" | grep -c remote_ip
+
+which must print 0.
+
+CADDY'S OLD JOURNAL IS SENSITIVE for the same reason the relay's is, and
+more so. The vacuum in section 6 is system-wide and covers both units;
+do it after this change, not before.
 
 ## 5. Check it, from outside
 
