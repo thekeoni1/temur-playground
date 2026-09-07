@@ -52,6 +52,10 @@ const RELAY_VERSION_URL =
 // reach a running relay must be able to reach its complete corresponding
 // source, and the footer plus the commit stamp are how they do it.
 const REPO_URL = "https://github.com/thekeoni1/temur-playground";
+// The trust block now says the runbook is "linked below", so it has to be.
+// Variant B makes a checkable claim about this page, and a claim that a
+// link exists is the cheapest kind to falsify.
+const RUNBOOK_URL = REPO_URL + "/blob/main/docs/VPS-RUNBOOK.md";
 
 const SNAP_ONLINE = "assets/state-p5-page.bin.gz";
 const SNAP_OFFLINE = "assets/state-page.bin.gz";
@@ -507,6 +511,14 @@ function renderStamp() {
     );
   }
   el.appendChild(src);
+
+  const rb = document.createElement("span");
+  rb.appendChild(document.createTextNode(" \u00b7 "));
+  const a3 = document.createElement("a");
+  a3.href = RUNBOOK_URL;
+  a3.textContent = "deployment runbook";
+  rb.appendChild(a3);
+  el.appendChild(rb);
 
   const v = document.createElement("span");
   v.appendChild(document.createTextNode(" \u00b7 "));

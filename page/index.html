@@ -107,6 +107,11 @@
     color: #cfd;
   }
   #steps li { margin: 0; }
+  /* The one link in the strip. color: inherit rather than a new colour,
+     because the strip's first line is the most-read line on the page and
+     the footer's dimmer link blue would have made the step a visitor most
+     needs the faintest of the three. The underline carries the affordance. */
+  #steps a { color: inherit; }
 
   #suggest { margin: 6px 0 0; color: #999; font-size: 12px; }
   #suggest code {
@@ -197,7 +202,7 @@
   <div id="bar"><div></div></div>
   <!-- THE TUTORIAL, all of it. Three lines beat a panel nobody reads. -->
   <ol id="steps">
-    <li>get an API key</li>
+    <li><a href="https://github.com/thekeoni1/temur-playground/blob/main/docs/API-KEYS.md">get an API key</a></li>
     <li>answer the setup questions</li>
     <li>chat</li>
   </ol>
@@ -211,22 +216,34 @@
     Try first: <code>make a file notes.txt with three uses for a 32-bit
     Linux box, then show it to me</code>
   </p>
+  <!-- Variant B, signed off. The old text asked the reader to trust the
+       relay ("it shows its commit, so you can check it"), and a relay can
+       report any commit string it likes. This says they do not need to
+       trust it at all, because TLS terminates inside the guest. The
+       hosting-provider paragraph sits low and short on purpose. -->
   <div id="trust">
-    <h2>What the relay can see, and how you can check</h2>
+    <h2>What this page can and cannot see</h2>
     <p>
       Your key is typed at the setup wizard's own hidden prompt, inside
-      the machine in this tab, and this page never reads it. Requests to
-      your AI provider are encrypted inside that machine before they
-      leave it, and they travel through a relay that can see only which
-      provider you are contacting and how many bytes moved. It cannot read your key, your prompts, or the replies, and
-      it can only reach the handful of AI providers on its allowlist.
+      the machine in this tab. This page never reads it.
     </p>
     <p>
-      You do not have to take that on trust. The relay's source is
-      published under the AGPL and linked at the bottom of this page, and
-      both the page and the relay show the exact commit they were built
-      from, so what is running here can be checked against what is
-      published.
+      Requests to your provider are encrypted <b>inside</b> that machine,
+      so the relay that carries them holds ciphertext. It can see which
+      provider you are contacting and how many bytes moved, and it cannot
+      read your key, your prompts or the replies. That does not depend on
+      trusting the relay: it is what terminating TLS inside the guest
+      means.
+    </p>
+    <p>
+      This site is served by a hosting provider that may receive its own
+      error reports about failed requests. Those carry no page content and
+      nothing from the machine in this tab.
+    </p>
+    <p>
+      This page shows the commit it was built from, and you can rebuild
+      it. <b>Run it yourself:</b> the source and the deployment runbook
+      are linked below.
     </p>
   </div>
 
