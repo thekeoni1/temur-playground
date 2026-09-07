@@ -231,18 +231,74 @@ what step 3's flag reads. No other configuration is needed.
     curl -s https://relay.temur.live/version
     curl -s -o /dev/null -w '%{http_code}\n' https://relay.temur.live/
 
-The first must print the SAME commit as the published HEAD being
-deployed. The second must print 426: there is no HTTP surface beyond
-/version. Then open the page and confirm the footer's commit matches.
+The second must print 426: there is no HTTP surface beyond /version.
+Then open the page and confirm the footer's commit matches.
+
+WHAT /version MUST EQUAL, and it is TWO CHECKS rather than one. The
+simple rule used to be "/version equals the published head". That is
+wrong in one direction: every page-only commit moves the head, and
+demanding a relay restart for a change that cannot affect the relay
+turns a real check into a ritual people learn to ignore.
+
+  (i)  /version MUST BE A PUBLISHED ANCESTOR OF THE HEAD. Not a
+       detached commit, not something local: a commit anyone can fetch.
+       This is what makes the AGPL source offer true.
+  (ii) NO COMMIT NEWER THAN /version MAY CHANGE THE RELAY'S RUNTIME
+       INPUTS. The runtime inputs are pinned, so this is checkable
+       rather than a judgement call:
+
+           relay/relay.mjs
+           relay/package.json
+           relay/package-lock.json
+
+       Everything else under relay/ is EXEMPT: the probes and any
+       documentation there do not run in the service.
+
+  REDEPLOY IS REQUIRED EXACTLY WHEN (ii) FAILS. To check it:
+
+           git diff --name-only <version-commit>..<head> -- \
+               relay/relay.mjs relay/package.json relay/package-lock.json
+
+       Empty means the running relay is the same program as the head
+       describes, and no redeploy is owed.
+
+  SOFT HABIT, not a rule: re-stamp at real checkpoints anyway, so the
+  gap between /version and head stays small and the two checks stay
+  easy to reason about.
 
 ## 6. Logs
 
     journalctl -u temur-relay -f
 
 Connection-level only, by construction: timestamps, destinations, byte
-counts, and the client IP with the source it came from. Payload is never
-logged, at any level, on any path. These lines are safe to share as-is,
-which is what makes soak review possible at all.
+counts, and the client address WITH THE ADDRESS ITSELF HASHED. Payload
+is never logged, at any level, on any path.
+
+THE ADDRESS IS A PER-PROCESS SALTED HMAC, first 8 hex characters. The
+raw address stays in memory, because the rate limits need it, and is
+never written down. The salt is generated at startup and never
+persisted, so the hash cannot be reversed by trying every address
+against it and cannot be correlated across restarts. Within one process
+it is stable, so a reviewer can still see that one address opened three
+connections without learning which address that was.
+
+SO THESE LINES ARE SHAREABLE, and that is what makes soak review
+possible. The earlier version of this section said they were "safe to
+share as-is" when they still carried raw addresses, which was written
+when the only visitor was the operator and stopped being true the moment
+the relay went public.
+
+    JOURNALS FROM BEFORE THAT CHANGE ARE SENSITIVE.
+
+They contain raw visitor addresses. They are PURGED, not shared, and the
+purge is a required step of the deploy that introduces the hashing:
+
+    sudo journalctl --rotate
+    sudo journalctl --vacuum-time=1s
+    sudo systemctl restart temur-relay
+
+Vacuum first, then confirm the relay comes back and its first new lines
+carry hashed addresses.
 
 ## Updating: publish FIRST, then pull
 
