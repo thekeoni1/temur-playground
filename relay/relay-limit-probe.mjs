@@ -6,6 +6,10 @@
 // present. Left exactly as it is until then: fix-or-retire is a
 // decision for that run, not for a session that cannot execute it.
 //
+// RUN AGAINST THE LIVE RELAY on 2026-09-06 as desktop's named
+// deploy-time probe. Both halves pass there; the rate half needed the
+// grace fix below before it could see a refusal at all.
+//
 // Sandbox P3a: prove the relay's rate limits actually trip.
 //
 // Two limits, two proofs:
@@ -24,6 +28,10 @@ const PER_HOST = Number(process.argv[4] || 8);
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Standing rule for relay clients: a socket counts as accepted only if
+// it survives this grace. See relay.mjs refuseUpgrade.
+const ACCEPT_GRACE_MS = 400;
+
 // --- 1. per-IP websocket rate limit ----------------------------------
 async function wsRateLimit() {
   const attempts = PER_MIN + 6;
@@ -41,13 +49,22 @@ async function wsRateLimit() {
           resolve(v);
         }
       };
+      // OPENING IS NOT BEING ACCEPTED. A refused upgrade now completes
+      // the handshake and closes immediately with a private code, so
+      // that the page can tell a limit from an outage. Resolving on
+      // "open" counted every refusal as an acceptance: run against the
+      // live relay this reported 66 of 66 accepted while the relay was
+      // in fact refusing 6 with close code 4002. Hold for the grace and
+      // count a connection only if it is still open at the end of it.
       ws.on("open", () => {
-        sockets.push(ws);
-        done(true);
+        setTimeout(() => {
+          sockets.push(ws);
+          done(true);
+        }, ACCEPT_GRACE_MS);
       });
       ws.on("error", () => done(false));
       ws.on("close", () => done(false));
-      setTimeout(() => done(false), 4000);
+      setTimeout(() => done(false), 6000);
     });
     if (ok) accepted++;
     else refused++;
