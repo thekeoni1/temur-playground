@@ -82,7 +82,11 @@ async function main() {
   await wait(800);
 
   const log = relay.out();
+  // OUR OWN JSON LINES, for the assertions that are about the shape of a
+  // field we emit. NOT for the no-address assertion below; see there.
   const lines = log.split("\n").filter((l) => l.includes('"event"'));
+  // EVERY line the process wrote, ours or not.
+  const allLines = log.split("\n").filter((l) => l.trim() !== "");
 
   // every ip field must be exactly 8 hex characters
   const ipFields = [...log.matchAll(/"ip":"([^"]*)"/g)].map((m) => m[1]);
@@ -91,16 +95,33 @@ async function main() {
     ipFields.length + " ip fields, sample " + JSON.stringify(ipFields.slice(0, 3)));
 
   // and NO line may contain an address-shaped string at all
+  //
+  // THIS RUNS ON allLines, AND THE DIFFERENCE IS THE WHOLE POINT. It used
+  // to run on `lines`, the subset filtered to entries containing "event",
+  // which is to say the lines THIS FILE writes. That made the assertion
+  // structurally incapable of failing for anything logged by anyone else
+  // in the process: @mercuryworkshop/wisp-js writes plain text with no
+  // "event" key, so its
+  //     info: new connection on / from <the visitor's address>
+  // was filtered out and the probe then reported "none in N lines". It
+  // passed 9/9 against code that was logging real addresses behind Caddy,
+  // which is a worse defect than the leak it was meant to catch, because
+  // a green that cannot go red is the one nobody re-checks.
+  //
+  // The claim being made is about the LOG, not about our share of it, so
+  // the evidence has to be the whole log. The "ip field is 8 hex"
+  // assertion above is genuinely about our own field and correctly reads
+  // the full text for it.
   const DOTTED = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
   const COLONHEX = /\b(?:[0-9a-f]{1,4}:){2,}[0-9a-f]{1,4}\b/i;
-  const offenders = lines.filter((l) => {
+  const offenders = allLines.filter((l) => {
     // the address_map in relay_start is the SYNTHETIC provider map, not
     // a client address, and is allowed.
     const stripped = l.replace(/"address_map":\{[^}]*\}/, "").replace(/"bind":"[^"]*"/, "");
     return DOTTED.test(stripped) || COLONHEX.test(stripped);
   });
   record(offenders.length === 0, "NO log line contains an address-shaped string",
-    offenders.length ? "offending: " + offenders[0].slice(0, 160) : "none in " + lines.length + " lines");
+    offenders.length ? "offending: " + offenders[0].slice(0, 160) : "none in " + allLines.length + " lines (the WHOLE log, not just ours)");
 
   // the two clients must hash differently, or the log is useless for soak
   const opens = [...log.matchAll(/"event":"ws_open","ip":"([0-9a-f]{8})"/g)].map((m) => m[1]);
