@@ -146,7 +146,17 @@ const OFFLINE_MOTD =
   "'Paste with Ctrl-Shift-V. Plain Ctrl-V sends a control byte, not a paste.'";
 
 const LAUNCH_OFFLINE = CONSOLE_FIX + OFFLINE_MOTD + "\n";
-const LAUNCH_INIT = CONSOLE_FIX + "cat /etc/temur-motd; TERM=xterm temur init\n";
+// THE WHOLE ARC IN ONE LINE. `temur init && temur` means a visitor who
+// finishes the wizard lands IN THE AGENT with no second step to
+// discover. The Ctrl-C escape survives by construction rather than by a
+// special case: init exits non-zero when interrupted, so && short
+// circuits and they get the shell instead. Both paths are proven in the
+// report.
+//
+// The motd is no longer printed here. The three numbered lines above
+// the terminal say the same thing on the page, and saying it twice was
+// the disease this pass is treating.
+const LAUNCH_INIT = CONSOLE_FIX + "export TERM=xterm; temur init && temur\n";
 
 // netcheck needs a config for doctor to read, and the snapshot has none
 // on purpose. It writes a THROWAWAY one under a redirected

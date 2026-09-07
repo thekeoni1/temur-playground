@@ -93,7 +93,46 @@
      questions and the trust block stop short of the terminal's right
      edge, which is the raggedness that made the page look uncentred in
      the first place. The column itself is the measure. */
+  /* #main is the column the terminal sets. The grid track is still
+     min-content, so the terminal decides the width and everything in
+     the column wraps to it. */
+  #main { display: block; }
+
+  /* THE TUTORIAL. Three lines, no panel, no heading. It replaces the
+     motd the guest used to print and the how-to panel the questions
+     used to carry. */
+  #steps {
+    margin: 0 0 8px;
+    padding: 0 0 0 20px;
+    color: #cfd;
+  }
+  #steps li { margin: 0; }
+
+  #suggest { margin: 6px 0 0; color: #999; font-size: 12px; }
+  #suggest code {
+    background: #303030;
+    border-radius: 3px;
+    padding: 0 3px;
+    color: #ccc;
+    overflow-wrap: break-word;
+  }
+
   #faq { margin: 14px 0 0; }
+
+  /* THE SIDEBAR, wide viewports only. The questions are reference; the
+     terminal is the thing. Below this width they stack in source order,
+     which is the same order they read in. 1200 is where the terminal
+     (704) plus a 20em column plus the gap still leaves margin. */
+  @media (min-width: 1200px) {
+    #wrap {
+      grid-template-columns: min-content minmax(0, 24em);
+      column-gap: 20px;
+      align-items: start;
+    }
+    #main { grid-column: 1; }
+    #faq { grid-column: 2; grid-row: 1; margin: 0; }
+    #stamp { grid-column: 1 / -1; }
+  }
   #faq h2 { font-size: 13px; margin: 0 0 6px; color: #99a; }
   #faq details {
     background: #202020;
@@ -151,18 +190,27 @@
 </head>
 <body>
 <div id="wrap">
+ <div id="main">
   <div id="notice" class="notice">starting...</div>
   <div id="relaybanner" class="notice bad" hidden></div>
   <div id="status">booting page...</div>
   <div id="bar"><div></div></div>
+  <!-- THE TUTORIAL, all of it. Three lines beat a panel nobody reads. -->
+  <ol id="steps">
+    <li>get an API key</li>
+    <li>answer the setup questions</li>
+    <li>chat</li>
+  </ol>
   <div id="term"></div>
   <p id="pastehint">
-    Paste with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>. Plain
-    <kbd>Ctrl</kbd>+<kbd>V</kbd> is not a paste in a terminal: it sends a
-    control byte into the machine, and at the hidden key prompt you will
-    not see that it did.
+    Paste with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: plain
+    <kbd>Ctrl</kbd>+<kbd>V</kbd> sends a control byte, and at the hidden
+    key prompt you will not see that it did.
   </p>
-
+  <p id="suggest">
+    Try first: <code>make a file notes.txt with three uses for a 32-bit
+    Linux box, then show it to me</code>
+  </p>
   <div id="trust">
     <h2>What the relay can see, and how you can check</h2>
     <p>
@@ -182,158 +230,60 @@
     </p>
   </div>
 
+ </div>
+
   <section id="faq">
     <h2>Questions</h2>
 
     <details>
-      <summary>What is this?</summary>
+      <summary>Pasting does nothing, or nothing appears when I paste</summary>
       <p>
-        A small Linux computer, running inside this browser tab, with temur
-        already on it. temur is a command line AI agent. Nothing is
-        installed on your own machine, and nothing you do here is uploaded
-        anywhere. To get real answers out of it you need an API key from an
-        AI provider, which you give to the setup wizard in the terminal
-        above.
-      </p>
-    </details>
-
-    <details>
-      <summary>Where does my API key go?</summary>
-      <p>
-        Into the computer in this tab, and nowhere else. This page has no
-        box to type a key into, and it never reads what you type in the
-        terminal: you are typing into a program running inside the emulated
-        machine, at that program's own prompt. The key is written to a file
-        inside that machine, which exists only in your browser's memory. It
-        is not sent to this site and not saved in your browser's storage.
-      </p>
-    </details>
-
-    <details>
-      <summary>How do I set it up?</summary>
-      <p>
-        The setup wizard is <code>temur init</code>. Sometimes it is
-        already running when you arrive; if you are looking at a shell
-        prompt instead, type it. If temur answers that a config already
-        exists, run <code>temur init --force</code> and it starts.
-      </p>
-      <p>The wizard asks four things. Enter alone takes the default shown
-        in brackets.</p>
-      <ol>
-        <li>
-          <b>Template.</b> Answer with a number or a name: <code>2</code>
-          or <code>anthropic</code>, <code>3</code> or <code>openai</code>,
-          <code>4</code> or <code>gemini</code>, <code>5</code> or
-          <code>xai</code>. Do not pick 1 here; there is a question about
-          that below.
-        </li>
-        <li>
-          <b>Startup profile</b>, or <b>Model id</b> depending on the
-          provider. The default is a sensible current model, so Enter is a
-          fine answer.
-        </li>
-        <li>
-          <b>API key file path.</b> Press Enter. The default is a path
-          inside the emulated machine, under
-          <code>/root/.secrets/</code>.
-        </li>
-        <li>
-          <b>Paste your API key.</b> This is the hidden prompt. Paste the
-          key, then press Enter.
-        </li>
-      </ol>
-      <p>
-        Then type <code>temur</code> to start the agent, or
-        <code>temur doctor</code> to check the configuration and the
-        connection first.
-      </p>
-    </details>
-
-    <details>
-      <summary>Pasting does not seem to do anything</summary>
-      <p>
-        Paste with <b>Ctrl-Shift-V</b>. In a terminal, plain Ctrl-V is not
-        a paste command at all: it sends a single control character to the
-        program you are talking to. At the key prompt the terminal is not
-        showing you what it receives, so a plain Ctrl-V looks exactly like
-        nothing happening, and you can end up with a key that is wrong in a
-        way you never saw.
-      </p>
-    </details>
-
-    <details>
-      <summary>I pasted my key and nothing appeared</summary>
-      <p>
-        That is correct, and it is not a hang. The key prompt turns the
-        terminal's echo off, so there are no characters, no dots and no
-        length to look at while you type or paste. Press Enter. temur then
-        prints a line confirming that the key was saved, and it never
-        prints the key itself.
+        Paste with <b>Ctrl-Shift-V</b>. Plain Ctrl-V is not a paste in a
+        terminal; it sends a control byte. And at the key prompt the
+        terminal shows nothing at all while you type or paste: no
+        characters, no dots. That is correct, not a hang. Press Enter.
       </p>
     </details>
 
     <details>
       <summary>How do I get out of a question?</summary>
       <p>
-        Ctrl-C at any ordinary question leaves the wizard and puts you at
-        the shell prompt, where <code>temur init</code> starts it again,
-        or <code>temur init --force</code> if temur answers that a config
-        already exists.
-        At the hidden key prompt, Ctrl-C is ignored on purpose: echo is
-        off there, and a Ctrl-C at that moment could leave you at a
-        terminal that has quietly stopped showing what you type. To get
-        past the key question without answering it, press Enter on the
-        empty line.
+        Ctrl-C leaves the wizard at a shell prompt, where
+        <code>temur init</code> starts it again. At the hidden key
+        prompt Ctrl-C is ignored on purpose, because echo is off there
+        and it could leave you at a terminal that has stopped showing
+        what you type. Press Enter on the empty line instead.
       </p>
     </details>
 
     <details>
       <summary>How do I change the key, or use a different provider?</summary>
       <p>
-        Run <code>temur init --force</code>. It rewrites the
-        configuration, but it will deliberately not overwrite a key file
-        that already has a key in it: it prints a line saying the key file
-        already exists and was left untouched, and then does not ask you
-        for a key at all. If you are replacing a key, delete the file
-        first and then run the wizard again:
-      </p>
-      <p><code>rm /root/.secrets/temur-anthropic-key</code></p>
-      <p>
-        Each provider keeps its key in its own file, so moving to a
-        different provider does not need the old one deleted.
+        <code>temur init --force</code>. It rewrites the configuration
+        but will not overwrite a key file that already has a key in it:
+        it says the file was left untouched and never asks. Delete the
+        file first, for example
+        <code>rm /root/.secrets/temur-anthropic-key</code>. Each
+        provider keeps its own file, so switching provider needs no
+        deletion.
       </p>
     </details>
 
     <details>
       <summary>Why not template 1, the local one?</summary>
       <p>
-        Template 1 points temur at a model server running on the same
-        machine, which is how you would run it against llama.cpp on a real
-        computer, with no key and no provider. In this tab there is
-        nothing listening at that address, so temur would have nothing to
-        talk to. Pick one of the hosted providers instead.
-      </p>
-    </details>
-
-    <details>
-      <summary>What do "Networked tier" and "NO PROVIDER" mean?</summary>
-      <p>
-        Networked tier is the working state: the emulated machine can
-        reach the provider you picked, through a relay that carries the
-        traffic without being able to read it. NO PROVIDER means it
-        cannot reach one, so temur still runs and everything local to
-        the machine still works, but anything that needs a hosted model
-        will not. Reloading the page later is worth a try.
+        It points temur at a model server on the same machine, which is
+        how you would run it against llama.cpp on a real computer. In
+        this tab nothing is listening there. Pick a hosted provider.
       </p>
     </details>
 
     <details>
       <summary>What happens when I close the tab?</summary>
       <p>
-        The whole computer stops existing, along with its files, the
-        configuration you just made, and your key. Nothing is written to
-        your own disk and nothing is kept here, which is why you have to
-        type the key again next time.
+        The whole computer stops existing, with its files, the
+        configuration and your key. Nothing is written to your disk, so
+        you type the key again next time.
       </p>
     </details>
   </section>
