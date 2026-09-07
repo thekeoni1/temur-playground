@@ -5,4 +5,7 @@ your browser tab. Close the tab and it is gone, key included.
   temur           start the agent
   temur doctor    check the config and the network
 
+You are in /files. Files you add from the page arrive here, and what
+temur writes here you can download from the page.
+
 Paste with Ctrl-Shift-V. Plain Ctrl-V sends a control byte, not a paste.

@@ -26,6 +26,7 @@
 // Usage: node tools/run-guest-net.mjs <bzImage> <initrd> <steps.json> [memMB] [relayUrl] [saveTo]
 import { V86 } from "v86";
 import fs from "fs";
+import { assertEmpty9p, plantIfAsked } from "./assert-empty-9p.mjs";
 
 const [bzimage, initrd, stepsPath, memArg, relayArg, saveTo] =
   process.argv.slice(2);
@@ -58,6 +59,10 @@ const emulator = new V86({
   disable_keyboard: true,
   disable_mouse: true,
   disable_speaker: true,
+  // P6: the page's 9p share. filesystem:{} makes an EMPTY one, which is
+  // the only kind a snapshot build may ever contain; see
+  // tools/assert-empty-9p.mjs for the rule that enforces it.
+  filesystem: {},
   net_device: {
     type: "ne2k",
     relay_url: RELAY,
@@ -150,6 +155,20 @@ async function finish(code, verdict) {
     "step " + JSON.stringify(r.name) + ": " + r.ms + " ms rc=" + r.rc,
   );
   if (saveTo) {
+    // Key-class gate: refuse to write a state whose 9p share is not
+    // empty. Anything in it would ship to every visitor.
+    await plantIfAsked(emulator);
+    try {
+      const st = assertEmpty9p(emulator, saveTo);
+      console.log(
+        "[harness] 9p empty-at-snapshot assert PASSED: entries=" +
+          st.entries + " used_size=" + st.used_size + " inodes=" + st.inodes,
+      );
+    } catch (e) {
+      console.log("\n" + e.message);
+      try { emulator.stop(); } catch (e2) {}
+      process.exit(3);
+    }
     const state = await emulator.save_state();
     fs.writeFileSync(saveTo, Buffer.from(state));
     console.log(

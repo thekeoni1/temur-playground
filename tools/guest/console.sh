@@ -20,3 +20,15 @@ stty icrnl 2>/dev/null
 if [ -r /etc/temur-motd ]; then
 	cat /etc/temur-motd
 fi
+# P6: START IN THE SHARE. /etc/init.d/S30files mounts the page's 9p
+# share at /files during boot, and this is what makes it the directory
+# the visitor is actually standing in: the login shell starts there, so
+# temur inherits it as its working directory, so a file dropped onto the
+# page is simply already in front of the agent with nothing to explain.
+#
+# Guarded rather than assumed. If the mount ever fails, or this overlay
+# is booted on a kernel without the 9p symbols, the login shell should
+# still come up in /root instead of printing a cd error at a visitor.
+if [ -d /files ]; then
+	cd /files
+fi

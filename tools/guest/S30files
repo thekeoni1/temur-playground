@@ -1,0 +1,41 @@
+#!/bin/sh
+# Sandbox P6: mount the page's 9p share at /files, at boot.
+#
+# THE SHARE IS /files, one short path, and it is the only one. The MOTD
+# prints it and the page prints it, so a visitor never has to be told
+# where their file went: it is the directory they are already standing
+# in, because /etc/profile.d/console.sh makes it the login shell's cwd
+# and temur therefore starts there too.
+#
+# v86 presents its in-memory filesystem as a virtio-9p device under the
+# tag host9p. msize=65536 is the transfer size the spike measured this
+# path working at; 9p2000.L is the Linux dialect, which is the one with
+# the operations a normal filesystem needs.
+#
+# NO REMOUNT ON RESTORE, DELIBERATELY. v86 serialises the 9p filesystem
+# INTO the saved state (it is data, not a live socket like the NIC), so
+# the mount comes back with the guest and needs no help. The spike
+# proved that against a cross-emulator read, and the proof set proves it
+# again on every snapshot this repo ships. That restraint is the
+# console.sh lesson applied forward: a reflexive nudge would silently
+# mask exactly the regression the proof exists to catch.
+#
+# This script runs from /etc/init.d/rcS, which forks it with "start".
+case "$1" in
+	start)
+		mkdir -p /files
+		mount -t 9p -o trans=virtio,version=9p2000.L,msize=65536 \
+			host9p /files
+		;;
+	stop)
+		umount /files 2>/dev/null
+		;;
+	restart|reload)
+		"$0" stop
+		"$0" start
+		;;
+	*)
+		echo "usage: $0 {start|stop|restart}"
+		exit 1
+		;;
+esac
