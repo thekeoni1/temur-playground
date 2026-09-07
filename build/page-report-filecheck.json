@@ -1,0 +1,24 @@
+{
+ "mode": "filecheck",
+ "tier": "offline",
+ "uploadListed": true,
+ "uploadGuestSha": "ba548b36a4e834c336a6568a30e422563644276ee6d039b59211570bcc74c996",
+ "uploadShaMatches": true,
+ "uploadBytes": 65536,
+ "downloadGuestSha": "802624c7313f4817e0627e79c27bfca3936ff42a1e4fb15600791f2047163548",
+ "downloadPageSha": "802624c7313f4817e0627e79c27bfca3936ff42a1e4fb15600791f2047163548",
+ "downloadShaMatches": true,
+ "downloadBytes": 65536,
+ "downloadListed": true,
+ "downloadClickThrew": null,
+ "caps": {
+  "FILE_MAX_BYTES": 8388608,
+  "SHARE_MAX_BYTES": 33554432
+ },
+ "perFileRefused": true,
+ "perFileMessage": "too-big.bin is larger than the 8.0 MB limit for one file, so it was not added.",
+ "totalBeforeRefusal": 25296896,
+ "totalRefused": true,
+ "totalMessage": "one-too-many.bin would take the machine past its 32.0 MB total, so it was not added.",
+ "ok": true
+}

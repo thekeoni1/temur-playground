@@ -52,30 +52,37 @@ if [ "$VENDOR_ONLY" = yes ]; then
   exit 0
 fi
 
-# The networked tier is the P3b snapshot (bzImage-p4 plus the overlay that
-# fixes ICRNL at the console and carries no baked config, so the guest can
-# land at temur's own wizard). The P3a and P3a-fix snapshots stay on disk
-# as the record of what those keyed runs used; they are simply no longer
-# served.
-if [ -f build/state-p5-page.bin ]; then
-  gzip -9 -c build/state-p5-page.bin > page/assets/state-p5-page.bin.gz
-  echo "staged page/assets/state-p5-page.bin.gz (networked tier)"
+# P6: BOTH TIERS COME FROM ONE KERNEL AND ONE OVERLAY NOW. That is the
+# structural fix for the defect the page had been papering over: the
+# offline snapshot was built from the P2-era rootfs, so console.sh and
+# the MOTD only ever reached the networked image, and an operator met
+# Enter echoing as ^M on the live page. The page still types stty icrnl
+# at landing as belt and braces; it is simply no longer load bearing.
+#
+# The superseded snapshots stay staged and committed beside these,
+# byte-identical, as the record of what the runs before this milestone
+# used. They are no longer served.
+if [ -f build/state-p6-net.bin ]; then
+  gzip -9 -c build/state-p6-net.bin > page/assets/state-p6-net.bin.gz
+  echo "staged page/assets/state-p6-net.bin.gz (networked tier)"
 else
-  echo "build/state-p5-page.bin missing; networked tier will not load" >&2
+  echo "build/state-p6-net.bin missing; networked tier will not load" >&2
 fi
 
-if [ -f build/state-page.bin ]; then
-  gzip -9 -c build/state-page.bin > page/assets/state-page.bin.gz
-  echo "staged page/assets/state-page.bin.gz (offline tier)"
+if [ -f build/state-p6-offline.bin ]; then
+  gzip -9 -c build/state-p6-offline.bin > page/assets/state-p6-offline.bin.gz
+  echo "staged page/assets/state-p6-offline.bin.gz (offline tier)"
 else
   cat >&2 <<'EOF'
-build/state-page.bin missing. Regenerate it with:
+build/state-p6-offline.bin missing. Regenerate it with:
 
-  node tools/run-guest.mjs kit/bzImage-p2 build/rootfs-temur.cpio.gz \
-       build/steps-page-snap.json 128 build/state-page.bin
+  node tools/gen-steps-p6-offline-snap.mjs
+  node tools/run-guest.mjs kit/bzImage-p6 build/rootfs-temur-p6.cpio.gz \
+       build/steps-p6-offline-snap.json 128 build/state-p6-offline.bin
 
-(build/rootfs-temur.cpio.gz itself is kit/rootfs.cpio.gz with the
-temur overlay appended; see reports/P1.md "Image recipe".)
+(build/rootfs-temur-p6.cpio.gz is kit/rootfs.cpio.gz with the p6 overlay
+appended; see reports/P6.md "Reproduce". The build REFUSES if the 9p
+share is not pristine at the snapshot point.)
 EOF
   exit 1
 fi

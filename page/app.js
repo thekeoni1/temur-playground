@@ -57,8 +57,13 @@ const REPO_URL = "https://github.com/thekeoni1/temur-playground";
 // link exists is the cheapest kind to falsify.
 const RUNBOOK_URL = REPO_URL + "/blob/main/docs/VPS-RUNBOOK.md";
 
-const SNAP_ONLINE = "assets/state-p5-page.bin.gz";
-const SNAP_OFFLINE = "assets/state-page.bin.gz";
+// THE P6 PAIR. Both tiers are now built from ONE kernel and ONE overlay,
+// which is what finally gets console.sh and the MOTD to the offline tier:
+// it used to be built from the P2-era rootfs and had never received
+// either. The p5 and P2 snapshots stay committed beside these, untouched,
+// as the record of what the keyed runs before this milestone used.
+const SNAP_ONLINE = "assets/state-p6-net.bin.gz";
+const SNAP_OFFLINE = "assets/state-p6-offline.bin.gz";
 
 // Networking does not survive restore_state: the guest kernel's interface
 // state comes back but the JS-side adapter and its websocket are new, and
@@ -647,6 +652,11 @@ async function main() {
     disable_keyboard: true,
     disable_mouse: true,
     disable_speaker: true,
+    // THE SHARE. Empty here on purpose: the snapshot carries the guest's
+    // side of the mount, and the filesystem's contents come back with
+    // the state. The emulator that restores must still be built with a
+    // 9p device or there is nothing for that state to land in.
+    filesystem: {},
   };
   if (networked) {
     // dns_method MUST be "static". The wisp backend defaults it to "doh",
@@ -720,7 +730,8 @@ async function main() {
           // exception: it drives the terminal itself, so the wizard must
           // not be sitting on the same tty waiting for an answer.
           if (!networked) send(LAUNCH_OFFLINE);
-          else if (!q.has("netcheck")) send(LAUNCH_INIT);
+          else if (!q.has("netcheck") && !q.has("filecheck"))
+            send(LAUNCH_INIT);
           const totalMs = Math.round(performance.now() - t0);
           window.__p3 = {
             tier: networked ? "networked" : "offline",
@@ -759,6 +770,10 @@ async function main() {
           );
           document.getElementById("bar").style.display = "none";
           term.focus();
+          // The file panel appears only now, with the machine up and the
+          // share mounted, so it cannot invite a drop that would go
+          // nowhere.
+          wireFiles(emulator);
           if (q.has("selftest")) selftest();
           // netcheck proves the NETWORKED tier from the browser without
           // capturing anything: it runs the keyless doctor probe and
@@ -777,11 +792,245 @@ async function main() {
           if (q.has("landingcheck") && networked) {
             landingcheck();
           }
+          // filecheck proves the file path on BOTH tiers. It posts no
+          // screen text, only booleans and hashes of bytes it generated
+          // itself, which is what makes running it on the networked tier
+          // safe where selftest is not.
+          if (q.has("filecheck")) {
+            filecheck(send);
+          }
+          // textcheck measures the diagnostics rule on both tiers.
+          if (q.has("textcheck")) {
+            textcheck();
+          }
         },
         networked ? 900 : 300,
       );
     }, 400);
   });
+}
+
+// --- files in and out -------------------------------------------------
+//
+// The share is /files in the guest, which is also the guest's working
+// directory, so a file that arrives here is already in front of temur
+// with nothing to explain. The JS side of it is v86's 9p filesystem:
+// create_file writes, read_file reads, and both are data in this tab.
+//
+// THE CAPS ARE MEASURED, NOT GUESSED. create_file itself is nearly free
+// (1 MiB in 3 ms, 8 MiB in 3 ms, 16 MiB in 15 ms) because it is a write
+// into this tab's memory. The cost that matters is the GUEST reading the
+// file back, which ran at roughly 200 ms per MiB on this machine: 0.6 s
+// at 1 MiB, 1.6 s at 8 MiB, 3.0 s at 16 MiB. Content hashes matched at
+// every size, so these are comfort limits, not correctness ones.
+//
+// 8 MiB per file is where a file stops being something the guest can
+// pick up briskly, and it is already far past anything a model will read
+// in one go. 32 MiB in total keeps the whole share well inside a guest
+// that has 128 MB of RAM and a filesystem that lives in this tab, with
+// room for the machine itself.
+//
+// They are refusals, never truncations. A file silently cut in half is
+// worse than a file that did not arrive, because the visitor would find
+// out from the model's confusion rather than from the page.
+const FILE_MAX_BYTES = 8 * 1024 * 1024;
+const SHARE_MAX_BYTES = 32 * 1024 * 1024;
+
+const filesEl = document.getElementById("files");
+const fileListEl = document.getElementById("filelist");
+const fileMsgEl = document.getElementById("filesmsg");
+const fileInputEl = document.getElementById("fileinput");
+const fileAddEl = document.getElementById("fileadd");
+
+function fmtBytes(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + " KB";
+  return (n / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+// One plain sentence, and it stays until the next action replaces it.
+function fileMsg(text) {
+  if (!fileMsgEl) return;
+  if (!text) {
+    fileMsgEl.hidden = true;
+    fileMsgEl.textContent = "";
+    return;
+  }
+  fileMsgEl.textContent = text;
+  fileMsgEl.hidden = false;
+}
+
+// v86 has no public listing call, so this reads the filesystem object
+// directly and is written to survive not finding what it expects: a
+// listing that throws would take the whole panel down with it, and the
+// panel is not important enough to cost anyone their session.
+function shareList(emulator) {
+  try {
+    const fs9p = emulator && emulator.fs9p;
+    if (!fs9p || typeof fs9p.read_dir !== "function") return [];
+    const names = fs9p.read_dir("/") || [];
+    return names.map((name) => {
+      let size = 0;
+      try {
+        const p = fs9p.SearchPath(name);
+        if (p && p.id !== -1) size = fs9p.GetInode(p.id).size || 0;
+      } catch (e) {}
+      return { name, size };
+    });
+  } catch (e) {
+    return [];
+  }
+}
+
+function shareTotal(emulator) {
+  return shareList(emulator).reduce((a, f) => a + f.size, 0);
+}
+
+function renderFiles(emulator) {
+  if (!filesEl) return;
+  filesEl.hidden = false;
+  const list = shareList(emulator);
+  fileListEl.textContent = "";
+  for (const f of list) {
+    const li = document.createElement("li");
+    const nm = document.createElement("span");
+    nm.className = "nm";
+    nm.textContent = f.name;
+    const sz = document.createElement("span");
+    sz.className = "sz";
+    sz.textContent = fmtBytes(f.size);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "download";
+    btn.addEventListener("click", () => downloadOne(emulator, f.name));
+    li.appendChild(nm);
+    li.appendChild(sz);
+    li.appendChild(btn);
+    fileListEl.appendChild(li);
+  }
+}
+
+async function downloadOne(emulator, name) {
+  try {
+    fileMsg("reading " + name + "...");
+    const bytes = await emulator.read_file(name);
+    if (!bytes) {
+      fileMsg("Could not read " + name + " from the machine.");
+      return;
+    }
+    // A blob URL and a synthetic click: the bytes never leave the tab,
+    // and nothing is fetched, so the CSP is untouched by this.
+    const url = URL.createObjectURL(new Blob([bytes]));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoked on a turn of the loop rather than immediately: some
+    // browsers have not finished with the URL when click() returns.
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    fileMsg("");
+  } catch (e) {
+    fileMsg("Could not read " + name + ": " + e.message);
+  }
+}
+
+async function addFiles(emulator, fileHandles) {
+  const incoming = Array.from(fileHandles || []);
+  if (!incoming.length) return;
+
+  let total = shareTotal(emulator);
+  for (const f of incoming) {
+    // Per-file cap first, so the message names the file that is wrong
+    // rather than blaming the share for being full.
+    if (f.size > FILE_MAX_BYTES) {
+      // NOT "is 8.0 MB and the limit is 8.0 MB", which is what naming
+      // both rounded sizes produced for a file one byte over: a refusal
+      // that reads as a contradiction and makes the page look broken
+      // rather than strict. Caught in the browser check.
+      fileMsg(
+        f.name + " is larger than the " + fmtBytes(FILE_MAX_BYTES) +
+          " limit for one file, so it was not added.",
+      );
+      continue;
+    }
+    if (total + f.size > SHARE_MAX_BYTES) {
+      fileMsg(
+        f.name + " would take the machine past its " +
+          fmtBytes(SHARE_MAX_BYTES) + " total, so it was not added.",
+      );
+      continue;
+    }
+    try {
+      // Progress, because reading a large file off disk is not instant
+      // even though the write into the machine is.
+      fileMsg("adding " + f.name + " (" + fmtBytes(f.size) + ")...");
+      const buf = new Uint8Array(await f.arrayBuffer());
+      await emulator.create_file(f.name, buf);
+      total += f.size;
+      fileMsg(f.name + " is in /files.");
+    } catch (e) {
+      fileMsg("Could not add " + f.name + ": " + e.message);
+    }
+  }
+  renderFiles(emulator);
+}
+
+function wireFiles(emulator) {
+  if (!filesEl) return;
+  renderFiles(emulator);
+
+  if (fileAddEl && fileInputEl) {
+    fileAddEl.addEventListener("click", () => fileInputEl.click());
+    fileInputEl.addEventListener("change", async () => {
+      await addFiles(emulator, fileInputEl.files);
+      // Cleared so the same file can be chosen twice in a row.
+      fileInputEl.value = "";
+    });
+  }
+
+  // Drag and drop onto the terminal itself. dragover must be cancelled
+  // or the browser navigates to the file and the machine is gone.
+  const termEl = document.getElementById("term");
+  if (termEl) {
+    const stop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    termEl.addEventListener("dragenter", (e) => {
+      stop(e);
+      termEl.classList.add("dropping");
+    });
+    termEl.addEventListener("dragover", (e) => {
+      stop(e);
+      termEl.classList.add("dropping");
+    });
+    termEl.addEventListener("dragleave", (e) => {
+      stop(e);
+      termEl.classList.remove("dropping");
+    });
+    termEl.addEventListener("drop", async (e) => {
+      stop(e);
+      termEl.classList.remove("dropping");
+      await addFiles(emulator, e.dataTransfer && e.dataTransfer.files);
+    });
+  }
+
+  // The guest writes to the share too, and nothing tells the page when.
+  // A slow poll is enough for a list that is usually empty and never
+  // long, and it costs a directory read of an in-memory filesystem.
+  setInterval(() => renderFiles(emulator), 2000);
+
+  // Named so the browser harness can drive exactly what a visitor's
+  // click drives, rather than a parallel path written for the test.
+  window.__files = {
+    list: () => shareList(emulator),
+    add: (fh) => addFiles(emulator, fh),
+    download: (n) => downloadOne(emulator, n),
+    caps: { FILE_MAX_BYTES, SHARE_MAX_BYTES },
+    msg: () => (fileMsgEl ? fileMsgEl.textContent : ""),
+  };
 }
 
 // --- self-test ------------------------------------------------------
@@ -847,6 +1096,239 @@ async function selftest() {
 }
 
 main();
+
+// --- filecheck --------------------------------------------------------
+//
+// Proves the PAGE's own file path, on both tiers, the way a visitor
+// drives it: through window.__files, which is the same code the button
+// and the drop handler call. A parallel path written for the test would
+// prove only that the test works.
+//
+// IT NEVER POSTS THE TERMINAL. selftest refuses the networked tier
+// outright because it captures the screen and a visitor's key could be
+// on it. This mode reads the screen too, but only to pull one 64-hex
+// sha256 out of it with a regex, and it posts booleans and hashes of
+// bytes THIS PAGE generated. No screen text is captured or sent, which
+// is why it is safe to run on both tiers, and running on both is the
+// point: proofs follow the visitor.
+//
+// The wizard is suppressed for this mode on the networked tier, for the
+// same reason netcheck suppresses it: this mode types at the shell, and
+// the wizard must not be sitting on the same tty waiting for an answer.
+async function sha256Hex(bytes) {
+  const d = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(d))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function filecheck(send) {
+  const rep = { mode: "filecheck", tier: networked ? "networked" : "offline" };
+  await wait(networked ? 2500 : 1500);
+
+  // ---- upload, through the page's own add path -------------------
+  const up = new Uint8Array(64 * 1024);
+  crypto.getRandomValues(up);
+  const upSha = await sha256Hex(up);
+  const upName = "filecheck-up.bin";
+  await window.__files.add([new File([up], upName)]);
+  rep.uploadListed = window.__files.list().some((f) => f.name === upName);
+
+  // The guest's own view of those bytes. This is the half that a JS-side
+  // check cannot give: it proves the file crossed into the machine.
+  term.clear();
+  send("sha256sum /files/" + upName + "\r");
+  await wait(4000);
+  const upSeen = /\b[0-9a-f]{64}\b/.exec(screen());
+  rep.uploadGuestSha = upSeen ? upSeen[0] : null;
+  rep.uploadShaMatches = !!upSeen && upSeen[0] === upSha;
+  rep.uploadBytes = up.length;
+
+  // ---- download, guest bytes back out ----------------------------
+  const downName = "filecheck-down.bin";
+  term.clear();
+  send(
+    "dd if=/dev/urandom of=/files/" + downName +
+      " bs=1024 count=64 2>/dev/null; sha256sum /files/" + downName + "\r",
+  );
+  await wait(5000);
+  const downSeen = /\b[0-9a-f]{64}\b/.exec(screen());
+  rep.downloadGuestSha = downSeen ? downSeen[0] : null;
+  const back = await emulator.read_file(downName);
+  rep.downloadPageSha = back ? await sha256Hex(back) : null;
+  rep.downloadShaMatches =
+    !!rep.downloadGuestSha && rep.downloadGuestSha === rep.downloadPageSha;
+  rep.downloadBytes = back ? back.length : 0;
+  rep.downloadListed = window.__files.list().some((f) => f.name === downName);
+
+  // The real button, once, to prove the anchor path does not throw under
+  // this CSP. The saved file itself is the browser's business; what is
+  // asserted here is that the page got the bytes and the click ran.
+  let clickThrew = null;
+  try {
+    await window.__files.download(downName);
+  } catch (e) {
+    clickThrew = e.message;
+  }
+  rep.downloadClickThrew = clickThrew;
+
+  // ---- the caps refuse, and say so in one sentence ---------------
+  const caps = window.__files.caps;
+  rep.caps = caps;
+
+  const overOne = new Uint8Array(caps.FILE_MAX_BYTES + 1);
+  const beforeOne = window.__files.list().length;
+  await window.__files.add([new File([overOne], "too-big.bin")]);
+  rep.perFileRefused = window.__files.list().length === beforeOne;
+  rep.perFileMessage = window.__files.msg();
+
+  // Fill toward the total with files that each pass the per-file cap, so
+  // the SECOND cap is what refuses and not the first.
+  const chunk = new Uint8Array(caps.FILE_MAX_BYTES);
+  let guard = 0;
+  while (
+    window.__files.list().reduce((a, f) => a + f.size, 0) +
+      caps.FILE_MAX_BYTES <=
+      caps.SHARE_MAX_BYTES &&
+    guard < 8
+  ) {
+    await window.__files.add([new File([chunk], "fill" + guard + ".bin")]);
+    guard += 1;
+  }
+  const beforeTotal = window.__files.list().length;
+  rep.totalBeforeRefusal = window.__files
+    .list()
+    .reduce((a, f) => a + f.size, 0);
+  await window.__files.add([new File([chunk], "one-too-many.bin")]);
+  rep.totalRefused = window.__files.list().length === beforeTotal;
+  rep.totalMessage = window.__files.msg();
+
+  rep.ok =
+    rep.uploadListed &&
+    rep.uploadShaMatches &&
+    rep.downloadShaMatches &&
+    rep.downloadListed &&
+    rep.downloadClickThrew === null &&
+    rep.perFileRefused &&
+    rep.totalRefused;
+
+  await fetch("/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rep, null, 1),
+  });
+  status("filecheck posted: " + (rep.ok ? "ok" : "FAILED"));
+}
+
+// --- textcheck --------------------------------------------------------
+//
+// The diagnostics-in-visitor-text rule, made checkable. The page has been
+// through a reduction pass whose whole point was that a visitor should
+// not have to read this project's vocabulary to use it, and the file
+// panel is new visitor-facing text, so the rule is measured again rather
+// than assumed to still hold.
+//
+// FOUR NUMBERS: markup and rendered text, on each tier. Markup catches a
+// term hidden in an attribute or a hidden element that a later change
+// could reveal; rendered text catches what is actually on screen. Both
+// are counted because either alone can be gamed by accident.
+//
+// /files is NOT a diagnostic and is not in this list. The share path is
+// deliberate visitor-facing text: the brief requires the MOTD and the
+// page to print the same short path, and a visitor who is told where
+// their file went is better off than one who is not.
+const DIAGNOSTIC_TERMS = [
+  "wisp",
+  "virtio",
+  "9p",
+  "fs9p",
+  "create_file",
+  "read_file",
+  "msize",
+  "initramfs",
+  "bzImage",
+  "cpio",
+  "snapshot",
+  "PAGE_DEV_RELAY",
+  "127.0.0.1",
+  "localhost",
+  "undefined",
+  "NaN",
+  "[object Object]",
+];
+
+async function textcheck() {
+  await wait(networked ? 3000 : 2000);
+  const markup = document.body.innerHTML;
+  const shown = document.body.innerText || document.body.textContent || "";
+  // TWO THINGS THIS COUNT MUST NOT DO, both found by running it.
+  //
+  // A plain substring match counted "9p" fifty times in the markup, all
+  // of them inside "9px" in xterm's inline styles. A check that reports
+  // a CSS length as a leaked kernel term is worse than no check, so the
+  // match is bounded.
+  //
+  // And the relay endpoint the page is CONFIGURED with is not a leak.
+  // Locally that is 127.0.0.1 because the harness passes PAGE_DEV_RELAY;
+  // on the deployed page it is relay.temur.live, and either way it is a
+  // deliberate value in a link, not a diagnostic that escaped. It is
+  // removed from the haystack rather than excused in the total, so what
+  // remains is genuinely unexplained.
+  const scrub = (hay) => {
+    let h = hay;
+    for (const u of [RELAY_WS, RELAY_WISP]) {
+      if (!u) continue;
+      const host = String(u).replace(/^\w+:\/\//, "").replace(/\/$/, "");
+      while (h.includes(host)) h = h.replace(host, "");
+      const bare = host.split(":")[0];
+      while (h.includes(bare)) h = h.replace(bare, "");
+    }
+    return h;
+  };
+  const countIn = (hayRaw) => {
+    const hay = scrub(hayRaw).toLowerCase();
+    const hits = {};
+    let total = 0;
+    for (const t of DIAGNOSTIC_TERMS) {
+      const esc = t.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      // Bounded on both sides, so "9p" does not match "9px" and "cpio"
+      // does not match a longer word that happens to contain it.
+      const re = new RegExp("(^|[^a-z0-9_])" + esc + "([^a-z0-9_]|$)", "g");
+      const n = (hay.match(re) || []).length;
+      if (n) {
+        hits[t] = n;
+        total += n;
+      }
+    }
+    return { total, hits };
+  };
+  const inMarkup = countIn(markup);
+  const inShown = countIn(shown);
+  await fetch("/report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      {
+        mode: "textcheck",
+        tier: networked ? "networked" : "offline",
+        terms: DIAGNOSTIC_TERMS.length,
+        markupCount: inMarkup.total,
+        markupHits: inMarkup.hits,
+        textCount: inShown.total,
+        textHits: inShown.hits,
+        // Proof the panel is really on the page when this was measured,
+        // so a zero cannot come from the panel simply being absent.
+        filePanelPresent: !!document.getElementById("files") &&
+          !document.getElementById("files").hidden,
+        sharePathShown: /\/files/.test(shown),
+        ok: inMarkup.total === 0 && inShown.total === 0,
+      },
+      null,
+      1,
+    ),
+  });
+  status("textcheck posted");
+}
 
 // --- netcheck ---------------------------------------------------------
 //

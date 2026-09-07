@@ -1,0 +1,35 @@
+{
+ "label": "networked",
+ "statePath": "build/state-p6-net.bin",
+ "results": {
+  "ICRNL on in the restored snapshot, no page nudge": {
+   "ok": true
+  },
+  "mount survives restore with no remount": {
+   "ok": true,
+   "detail": "host9p /files 9p rw,relatime,access=client,msize=65536,trans=virtio 0 0"
+  },
+  "share ships empty to the visitor": {
+   "ok": true
+  },
+  "upload: host sha256 == guest sha256": {
+   "ok": true,
+   "detail": "host 7bacaa000427b953 guest 7bacaa000427b953 (65536 B)"
+  },
+  "same hash after drop_caches (not served from cache)": {
+   "ok": true
+  },
+  "still listed after umount and remount (no cached dentry)": {
+   "ok": true,
+   "detail": "rc=0"
+  },
+  "download: guest sha256 == bytes the page reads back": {
+   "ok": true,
+   "detail": "guest cf3cf6640551de0d js cf3cf6640551de0d (65536 B)"
+  },
+  "temur is present and the share is a working directory": {
+   "ok": true
+  }
+ },
+ "failed": 0
+}
