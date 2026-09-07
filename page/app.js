@@ -604,6 +604,16 @@ async function main() {
       "moment, so an API key will not help here.";
     noticeEl.className = "notice warn";
     console.info("temur sandbox: offline tier, no relay reachable at " + RELAY_WS);
+    // AND THE STRIP ADAPTS, rather than contradicting the line above it.
+    // Its first step was a clickable "get an API key" sitting directly
+    // over a notice that says a key will not help here, which sends the
+    // reader off to spend real time on something this tier cannot use.
+    // All three steps (get a key / answer the wizard / chat) describe the
+    // networked flow and not one of them applies offline, so the whole
+    // strip goes rather than just its link. The networked tier keeps it
+    // exactly as the markup ships it.
+    const stepsEl = document.getElementById("steps");
+    if (stepsEl) stepsEl.hidden = true;
   }
 
   // A refusal is NOT an outage and must not be described as one. The
@@ -941,7 +951,14 @@ async function relaycheck() {
 async function landingcheck() {
   await wait(9000);
   const flat = screen().replace(/\s+/g, " ");
-  const motd = /temur init\s+set up a provider/.test(flat);
+  // WAS motdShown, AND IT MEASURED NOTHING. It matched the in-guest motd
+  // that the reduction pass stopped printing, so it had been permanently
+  // false since a89b87b: a check that can only ever say no is worse than
+  // no check, because it reads like a covered case. What is worth
+  // asserting on this screen now is the landing fix that replaced it,
+  // the `clear;` in LAUNCH_INIT: neither the four-line NET_NUDGE echo nor
+  // the launch line itself may still be above the wizard.
+  const clean = !/ip addr flush|ip neigh flush|temur init &&/.test(flat);
   const prompt = /Template \[1\]:/.test(flat);
   const wrote = /Config will be written to: (\/\S+)/.exec(flat);
   const stampEl = document.getElementById("stamp");
@@ -952,7 +969,7 @@ async function landingcheck() {
       {
         mode: "landingcheck",
         tier: "networked",
-        motdShown: motd,
+        cleanLanding: clean,
         wizardAtFirstQuestion: prompt,
         configPath: wrote ? wrote[1] : null,
         relayWatch: window.__p3 && window.__p3.relayWatch,
