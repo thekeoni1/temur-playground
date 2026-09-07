@@ -1,11 +1,16 @@
-# Relay VPS runbook (section 0 run, sections 1 to 6 NOT run)
+# Relay VPS runbook (sections 0 to 5 RUN on 2026-09-06; section 6 is a live command)
 
 The exact steps the operator executes on the relay host. SECTION 0's
-prerequisites have now been run by hand on the real box, on 2026-09-05,
-and are recorded below as they were typed, with the versions that were
-actually observed. SECTIONS 1 TO 6 HAVE NOT BEEN RUN. They still need
-credentials or a step no session has taken; sessions prepare and verify,
-the operator types anything credentialed.
+prerequisites ran on 2026-09-05 and SECTIONS 1 TO 5 ran on 2026-09-06,
+both by hand on the real box, and both are recorded below as they were
+typed with the versions actually observed. The relay is LIVE at
+https://relay.temur.live. Section 6 is a live command rather than a
+step to perform.
+
+CORRECTIONS FROM THE RUN ARE IN THE STEPS THEMSELVES, not appended as
+errata, so that following this document top to bottom works. What was
+wrong is called out where it was wrong. reports/P3b-deploy.md carries
+the proofs and the measurements.
 
 Target shape, from the brief: the page is on Cloudflare Pages at
 play.temur.live, the relay is on the smallest VPS at relay.temur.live,
@@ -94,8 +99,15 @@ A host with 1 GB or more does not need this step.
     sudo adduser --system --group --home /srv/relay relay
     sudo -u relay git clone https://github.com/thekeoni1/temur-playground \
         /srv/relay/app
-    cd /srv/relay/app
-    sudo -u relay git checkout <PUBLISHED_COMMIT>
+    sudo -u relay git -C /srv/relay/app checkout <PUBLISHED_COMMIT>
+
+DO NOT `cd /srv/relay/app` AS THE LOGIN USER. It fails, and the failure
+is correct rather than a mistake: `adduser --system` creates the home
+directory without world execute, so ubuntu cannot traverse into it. Use
+`git -C` as above, and for anything that genuinely needs a working
+directory, run it inside the relay user's own shell:
+
+    sudo -u relay -H sh -c 'cd /srv/relay/app && <command>'
 
 `<PUBLISHED_COMMIT>` is the commit being deployed. THE COMMIT MUST
 ALREADY BE PUBLISHED. That is the standing rule and the reason for the
@@ -104,14 +116,25 @@ false.
 
 ## 2. Install and stamp
 
-    cd /srv/relay/app/relay
-    sudo -u relay npm ci
-    cd /srv/relay/app
-    sudo -u relay node tools/stamp.mjs
+    sudo -u relay -H sh -c 'cd /srv/relay/app/relay && npm ci'
+    sudo -u relay -H sh -c 'cd /srv/relay/app && node tools/stamp.mjs'
+
+THE `-H` IS REQUIRED, not decoration. Without it sudo keeps the calling
+user's HOME and npm writes its cache into the wrong user's home, which
+either fails on permissions or leaves root-owned files in a place the
+relay user cannot manage.
 
 `npm ci` in relay/, not at the root: the relay has its own
 package.json and lockfile so the deployed tree carries only what the
 relay needs.
+
+BUFFERUTIL'S INSTALL SCRIPT IS LEFT UNAPPROVED ON PURPOSE. npm reports
+it as skipped. bufferutil is an optional native accelerator for ws, and
+ws falls back to its JavaScript implementation when it is absent, so the
+relay is fully functional without it. Approving a native build script on
+the deployment host buys a little masking and framing speed and costs a
+compiler running on the box; the trade is not worth it at this traffic.
+Observed as skipped on 2026-09-06 and the relay has run correctly since.
 
 `tools/stamp.mjs` writes relay/build-info.json from the checked-out
 commit. IT WILL REFUSE IF THE TREE IS DIRTY, and the relay will refuse to
@@ -170,6 +193,18 @@ The relay reads this limit at startup and REFUSES TO START if it is
 below what its configured ceiling needs, so a box that never got this
 line, or lost it to a later edit, fails loudly at start with the fix in
 the message rather than quietly at the worst possible moment.
+
+MEASURED ON THE BOX on 2026-09-06, from the relay's own relay_start
+line, so the sizing is no longer a laptop proxy:
+
+    nofile_soft 8192, nofile_required 1696   the unit line is in effect
+    18.8 MB idle                             the whole process
+    limits 16 / 8 / 60 / 24 / 96             as configured
+
+The 18.8 MB is against the 63 MiB the same build idles at on a laptop:
+V8 sizes its heap from available memory, so a 414 MB box gets a smaller
+one. The descriptor headroom is what the cap actually rests on and it is
+now observed rather than assumed.
 
 RELAY_TRUST_PROXY=1 is required here and ONLY here. Without it every
 visitor arrives as 127.0.0.1 from Caddy and they all share one rate-limit
