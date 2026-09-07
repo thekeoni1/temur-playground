@@ -145,9 +145,7 @@ const OFFLINE_MOTD =
   "'' " +
   "'This one cannot reach an AI provider, so temur will start but cannot' " +
   "'answer. Run temur doctor to see why. Everything else is an ordinary' " +
-  "'Linux shell, so have a look around.' " +
-  "'' " +
-  "'Paste with Ctrl-Shift-V. Plain Ctrl-V sends a control byte, not a paste.'";
+  "'Linux shell, so have a look around.'";
 
 const LAUNCH_OFFLINE = CONSOLE_FIX + OFFLINE_MOTD + "\n";
 // THE WHOLE ARC IN ONE LINE. `temur init && temur` means a visitor who
@@ -160,7 +158,15 @@ const LAUNCH_OFFLINE = CONSOLE_FIX + OFFLINE_MOTD + "\n";
 // The motd is no longer printed here. The three numbered lines above
 // the terminal say the same thing on the page, and saying it twice was
 // the disease this pass is treating.
-const LAUNCH_INIT = CONSOLE_FIX + "export TERM=xterm; temur init && temur\n";
+// `clear;` for the same reason OFFLINE_MOTD carries one, and it is not
+// cosmetic here either. NET_NUDGE is four ip commands the page types
+// into the guest, so the guest echoes all four, and the first thing a
+// visitor saw on the networked tier was the plumbing that got the
+// machine online. The clear runs after the echo and before the wizard
+// draws, so what remains is the wizard alone. NET_NUDGE itself is
+// untouched: it works, and only its echo was ever the problem.
+const LAUNCH_INIT =
+  CONSOLE_FIX + "clear; export TERM=xterm; temur init && temur\n";
 
 // netcheck needs a config for doctor to read, and the snapshot has none
 // on purpose. It writes a THROWAWAY one under a redirected
@@ -907,7 +913,7 @@ async function relaycheck() {
 // the MOTD, then temur's wizard sitting at its first question. Like
 // netcheck it matches ONE known line and posts that match, never the
 // terminal buffer, so it cannot carry anything a visitor typed. It also
-// reports the footer stamp and the paste hint, which are plain page text.
+// reports the footer stamp, which is plain page text.
 // It belongs in the same do-not-run-with-a-key list as the others.
 async function landingcheck() {
   await wait(9000);
@@ -916,7 +922,6 @@ async function landingcheck() {
   const prompt = /Template \[1\]:/.test(flat);
   const wrote = /Config will be written to: (\/\S+)/.exec(flat);
   const stampEl = document.getElementById("stamp");
-  const hintEl = document.getElementById("pastehint");
   await fetch("/report", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -930,7 +935,6 @@ async function landingcheck() {
         relayWatch: window.__p3 && window.__p3.relayWatch,
         readyMs: window.__p3 && window.__p3.readyMs,
         stampText: stampEl ? stampEl.textContent.trim() : null,
-        pasteHint: hintEl ? hintEl.textContent.replace(/\s+/g, " ").trim() : null,
         relayWs: RELAY_WS,
         relayWisp: RELAY_WISP,
       },
