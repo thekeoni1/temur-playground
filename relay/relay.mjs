@@ -26,6 +26,7 @@ import { createRequire } from "module";
 import { pathToFileURL } from "url";
 import { server as wisp } from "@mercuryworkshop/wisp-js/server";
 import { WebSocketServer } from "ws";
+import crypto from "crypto";
 
 // --- the one deep import, asserted -----------------------------------
 //
@@ -187,6 +188,25 @@ function isLoopback(addr) {
     addr === "::ffff:127.0.0.1" ||
     (typeof addr === "string" && addr.startsWith("127."))
   );
+}
+
+// --- what goes in the log instead of the address ---------------------
+//
+// A RAW IP IS PERSONAL DATA AND THIS IS A PUBLIC SERVICE. The limits
+// below need the real address to work, so the address stays in memory;
+// what gets WRITTEN DOWN is a salted hash of it.
+//
+// THE SALT IS PER PROCESS AND NEVER PERSISTED. That is the point rather
+// than a shortcut: it rotates on every restart, so nobody can correlate
+// a visitor across restarts and nobody can reverse the hash by trying
+// the four billion IPv4 addresses against a salt they do not have.
+// Within one process the hash is stable, which is exactly what soak
+// review needs: you can see that one address opened three connections
+// without learning which address it was.
+const LOG_SALT = crypto.randomBytes(32);
+
+function hashIp(ip) {
+  return crypto.createHmac("sha256", LOG_SALT).update(String(ip)).digest("hex").slice(0, 8);
 }
 
 function clientIp(req) {
@@ -632,7 +652,7 @@ const refusalWss = new WebSocketServer({ noServer: true });
 function refuseUpgrade(req, socket, head, verdict, ip, source) {
   logLine({
     event: "upgrade_refused",
-    ip,
+    ip: hashIp(ip),
     ip_source: source,
     why: verdict.why,
     close_code: verdict.code,
@@ -703,11 +723,13 @@ server.on("upgrade", (req, socket, head) => {
 
   live.set(ip, (live.get(ip) || 0) + 1);
   liveTotal++;
-  logLine({ event: "ws_open", ip, ip_source: source, live: live.get(ip), live_total: liveTotal });
+  // The MAP lookups below use the raw ip on purpose; only the logged
+  // field is hashed. Hashing a map key would silently break the limits.
+  logLine({ event: "ws_open", ip: hashIp(ip), ip_source: source, live: live.get(ip), live_total: liveTotal });
   socket.on("close", () => {
     live.set(ip, Math.max(0, (live.get(ip) || 1) - 1));
     liveTotal = Math.max(0, liveTotal - 1);
-    logLine({ event: "ws_close", ip, live: live.get(ip), live_total: liveTotal });
+    logLine({ event: "ws_close", ip: hashIp(ip), live: live.get(ip), live_total: liveTotal });
   });
 
   wisp.routeRequest(req, socket, head, { TCPSocket: CountingTCPSocket });
@@ -744,6 +766,7 @@ server.listen(PORT, HOST, () => {
     client_ip_source: TRUST_PROXY
       ? "x-forwarded-for last hop when the socket is loopback, else socket"
       : "socket",
+    ip_logging: "per-process salted HMAC-SHA256, first 8 hex; the raw address is never logged and the salt rotates on restart",
     note: "connection-level logging only; payload is never logged",
   });
 });
