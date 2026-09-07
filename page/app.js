@@ -370,6 +370,25 @@ function watchRelay(emulator) {
   const REFUSAL_MEMORY_MS = 30000;
   let refusedAt = 0;
 
+  // THE WATCHER MUST NOT SPEAK BEFORE THE FIRST CONNECTION. state.up
+  // starts true and the adapter poll begins the moment the snapshot is
+  // restored, which is before the guest's wisp socket has finished
+  // dialling. The first ticks therefore saw a socket that was not OPEN
+  // yet and fired an outage banner at a visitor whose relay was fine.
+  // So no outage is declared until the socket has once been observed
+  // OPEN.
+  //
+  // The suppression is BOUNDED, or a relay that is genuinely
+  // unreachable would never be reported at all: past STARTUP_GRACE_MS
+  // the watcher speaks whether or not it ever saw a connection. 15 s,
+  // because v86 redials every 10 s and the first dial is at boot, so a
+  // whole redial cycle plus a handshake fits inside the grace, while a
+  // dead relay is still named long before a visitor has finished
+  // reading the page.
+  const STARTUP_GRACE_MS = 15000;
+  const startedAt = Date.now();
+  let seenOpen = false;
+
   function banner(text) {
     bannerEl.textContent = text;
     const btn = document.createElement("button");
@@ -428,6 +447,10 @@ function watchRelay(emulator) {
     }
   }
   function back() {
+    // Above the early return on purpose. state.up starts true, so on the
+    // very first OPEN tick this function does nothing else, and a latch
+    // set below the guard would never be set at all.
+    seenOpen = true;
     if (state.up) return;
     state.up = true;
     state.cause = null;
@@ -461,7 +484,7 @@ function watchRelay(emulator) {
       const ws = adapter.wispws;
       noticeRefusals(ws);
       if (ws && ws.readyState === WebSocket.OPEN) back();
-      else down();
+      else if (seenOpen || Date.now() - startedAt > STARTUP_GRACE_MS) down();
     }, 1000);
   } else {
     // Fallback only: costs one of the relay's per-IP websocket slots.
