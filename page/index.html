@@ -83,17 +83,6 @@
     font-size: 12px;
   }
   #stamp a { color: #89a; }
-  /* The draft marker is DISCLOSURE, not decoration. It used to be a
-     suffix inside the heading, where it wrecked the title; it is a line
-     of its own now, still inside the block so it plainly belongs to
-     this text and cannot be mistaken for a label on the questions
-     below. Deliberately not shrunk into invisibility: the point is that
-     a reader can see this passage is not final. */
-  #trust .draft {
-    color: #da4;
-    font-weight: bold;
-    margin: 10px 0 0;
-  }
   /* The questions block. Plain <details>, closed by default, so the
      terminal is still the first thing on the page and nothing here
      pushes it down. No script: <details> opens by itself, from a click
@@ -190,9 +179,6 @@
       both the page and the relay show the exact commit they were built
       from, so what is running here can be checked against what is
       published.
-    </p>
-    <p class="draft">
-      [DRAFT - pending review] This wording has not been signed off yet.
     </p>
   </div>
 
