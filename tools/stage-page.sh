@@ -1,8 +1,12 @@
 #!/bin/sh
 # Stage page/vendor and page/assets from the pinned sources.
 #
-# page/vendor and page/assets are NOT committed: every file in them is a
-# copy of something the repo already pins authoritatively.
+# page/vendor is NOT committed: every file in it is a copy of something
+# the repo already pins authoritatively. page/assets is a MIXED case, and
+# saying "not committed" here was simply false from P3b decision C
+# onwards: the two SERVED snapshots are committed so that the deployed
+# site is built from the published commit, and everything else under
+# page/assets stays out. See .gitignore, which spells out that shape.
 #   - libv86.js / v86.wasm  come from node_modules/v86        (package-lock.json)
 #   - xterm.js / xterm.css  come from node_modules/@xterm/xterm (package-lock.json)
 #   - seabios.bin / vgabios.bin are the committed blobs in bios/
