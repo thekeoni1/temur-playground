@@ -39,7 +39,8 @@ are named here by artifact, because a notice that says "the guest image"
 does not tell a reader which file carries which obligation.
 
   Linux kernel             6.19.14                  GPL-2.0
-    kit/bzImage, kit/bzImage-p2, kit/bzImage-p3, kit/bzImage-p4
+    kit/bzImage, kit/bzImage-p2, kit/bzImage-p3, kit/bzImage-p4,
+    kit/bzImage-p6
     https://www.kernel.org
 
   BusyBox                  1.37.0                   GPL-2.0
@@ -60,8 +61,8 @@ does not tell a reader which file carries which obligation.
 
   THE TWO SERVED SNAPSHOTS CARRY ALL OF THE ABOVE:
 
-    page/assets/state-page.bin.gz
-    page/assets/state-p5-page.bin.gz
+    page/assets/state-p6-net.bin.gz
+    page/assets/state-p6-offline.bin.gz
 
   They are memory images of the running machine, so they CONTAIN the
   kernel and the BusyBox userspace in executable form. Serving them from

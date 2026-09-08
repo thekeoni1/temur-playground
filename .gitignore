@@ -22,7 +22,5 @@ page/vendor/
 page/assets/*
 !page/assets/state-p6-net.bin.gz
 !page/assets/state-p6-offline.bin.gz
-!page/assets/state-p5-page.bin.gz
-!page/assets/state-page.bin.gz
 page/build-info.js
 relay/build-info.json
