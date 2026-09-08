@@ -1,0 +1,14 @@
+{
+ "results": {
+  "controlPrime": "BUILD-OLD",
+  "controlWarm": "BUILD-OLD",
+  "fixPrime": "BUILD-OLD",
+  "fixWarm": "BUILD-NEW",
+  "fresh": "BUILD-NEW"
+ },
+ "controlReproduced": true,
+ "fixWorks": true,
+ "freshOk": true,
+ "primedOk": true,
+ "ok": true
+}

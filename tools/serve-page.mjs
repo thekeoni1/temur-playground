@@ -23,10 +23,16 @@
 import http from "http";
 import fs from "fs";
 import path from "path";
+import { stampAssetRefs } from "./asset-stamp.mjs";
 
 const ROOT = path.resolve("page");
 const PORT = Number(process.argv[2] || 8088);
 const HEADERS_FILE = path.join(ROOT, "_headers");
+
+// Imitate Cloudflare Pages' real cache defaults instead of no-store.
+// Opt-in, and only for proving the asset-fingerprinting fix against a
+// warm cache; see the Cache-Control note further down.
+const CACHE_LIKE_PAGES = process.env.PAGE_CACHE_LIKE_PAGES === "1";
 const DEV_RELAY = process.env.PAGE_DEV_RELAY || null;
 
 // Cloudflare Pages _headers: a line at column 0 is a path pattern, the
@@ -149,6 +155,44 @@ const server = http.createServer((req, res) => {
       return;
     }
     const type = TYPES[path.extname(file)] || "application/octet-stream";
+
+    // THE SAME ASSET STAMPING THE BUILD DOES, through the same imported
+    // function, applied in memory so the local loop never writes to the
+    // tree. If this were a second implementation it would be the exact
+    // drift page/_headers already warns about, and drift between what a
+    // laptop serves and what Pages serves is how the stale-cache defect
+    // stayed invisible in the first place.
+    if (rel === "/index.html") {
+      let version = "dev";
+      try {
+        const bi = fs.readFileSync(path.join(ROOT, "build-info.js"), "utf8");
+        const m = /"short":"([A-Za-z0-9._-]+)"/.exec(bi);
+        if (m) version = m[1];
+      } catch (e) {}
+      let body;
+      try {
+        body = stampAssetRefs(fs.readFileSync(file, "utf8"), version);
+      } catch (e) {
+        res.writeHead(500).end(String(e.message));
+        console.log("500 " + rel + "  " + e.message);
+        return;
+      }
+      const buf = Buffer.from(body, "utf8");
+      const head = {
+        "Content-Type": type,
+        "Content-Length": buf.length,
+        "Cache-Control": CACHE_LIKE_PAGES
+          ? "public, max-age=0, must-revalidate"
+          : "no-store",
+      };
+      for (const [n, v] of SERVED_HEADERS) head[n] = v;
+      res.writeHead(200, head);
+      served.set(rel, buf.length);
+      console.log("200 " + rel + "  " + buf.length + " B  " + type +
+        "  (asset refs stamped v=" + version + ")");
+      res.end(buf);
+      return;
+    }
     // Cross-origin isolation (so SharedArrayBuffer is available if the
     // v86 build wants it) and the CSP both come from page/_headers.
     // connect-src is the page's own origin plus the relay websocket and
@@ -162,7 +206,16 @@ const server = http.createServer((req, res) => {
     const head = {
       "Content-Type": type,
       "Content-Length": st.size,
-      "Cache-Control": "no-store",
+      // no-store by default: a dev server that caches is a dev server
+      // that lies to you. PAGE_CACHE_LIKE_PAGES=1 makes it imitate
+      // Cloudflare Pages' actual defaults instead, which is the ONLY way
+      // to exercise the returning-visitor case the fingerprinting fix
+      // exists for: with no-store the browser never holds a stale
+      // app.js, so a warm-cache proof against this server would prove
+      // nothing at all.
+      "Cache-Control": CACHE_LIKE_PAGES
+        ? "public, max-age=14400, must-revalidate"
+        : "no-store",
     };
     for (const [n, v] of SERVED_HEADERS) head[n] = v;
     res.writeHead(200, head);

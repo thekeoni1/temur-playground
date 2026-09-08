@@ -21,6 +21,7 @@ import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { stampAssetRefs, stripAssetStamps } from "./asset-stamp.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const allowDirty = process.argv.includes("--allow-dirty");
@@ -61,6 +62,30 @@ if (fromEnv && /^[0-9a-f]{40}$/.test(fromEnv.trim())) {
   } catch (e) {
     fail("cannot check whether the tree is clean (" + String(e.message).split("\n")[0] + ")");
   }
+
+  // A PREVIOUSLY STAMPED index.html IS NOT A DIRTY TREE. This script
+  // rewrites page/index.html's asset references in place, so its own
+  // output would otherwise make the next run refuse. The test is exact
+  // rather than an exemption: the working copy is compared to the
+  // committed blob with the version markers stripped from BOTH, so a
+  // stamp is forgiven and any other edit to that file still fails the
+  // check. Weakening it to "ignore index.html" would let a real
+  // uncommitted change ship under a sha that does not describe it, which
+  // is the one thing this refusal exists to prevent.
+  if (dirty) {
+    const lines = dirty.split("\n").filter((l) => l.trim());
+    const kept = lines.filter((l) => {
+      if (!/\spage\/index\.html$/.test(l)) return true;
+      try {
+        const head = git(["show", "HEAD:page/index.html"]);
+        const now = fs.readFileSync(path.join(ROOT, "page", "index.html"), "utf8");
+        return stripAssetStamps(now).trim() !== stripAssetStamps(head).trim();
+      } catch (e) {
+        return true;
+      }
+    });
+    dirty = kept.join("\n");
+  }
   if (dirty && !allowDirty) {
     fail(
       "the working tree is dirty, so " +
@@ -96,6 +121,26 @@ fs.writeFileSync(
     ";\n",
 );
 
+// AND THE PAGE'S ASSET URLS GET THAT SAME SHORT SHA, which is the whole
+// cache fix. index.html is the only always-fresh file, so it is the only
+// place a version can be published from: build-info.js cannot bootstrap
+// it, because build-info.js is itself one of the four-hour-cached files.
+//
+// The committed index.html keeps BARE references and this rewrites them
+// in the build output, the same shape as build-info.js being generated
+// rather than tracked. tools/serve-page.mjs performs the identical
+// rewrite in memory for the local loop, through the same imported
+// function, so what a laptop serves and what Pages serves cannot drift.
+const indexOut = path.join(ROOT, "page", "index.html");
+let stampedIndex;
+try {
+  stampedIndex = stampAssetRefs(fs.readFileSync(indexOut, "utf8"), info.short);
+} catch (e) {
+  fail(String(e.message));
+}
+fs.writeFileSync(indexOut, stampedIndex);
+
 console.log("stamped " + info.short + " (" + info.source + ")");
 console.log("  " + path.relative(ROOT, relayOut));
 console.log("  " + path.relative(ROOT, pageOut));
+console.log("  " + path.relative(ROOT, indexOut) + " (asset refs)");
