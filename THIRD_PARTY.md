@@ -104,9 +104,11 @@ is committed here rather than described:
   kit/kernel-p2.config                 each guest, as built
   kit/kernel-p3.config
   kit/kernel-p4.config
+  kit/kernel-p6.config
   kit/linux-i686-v86-p2.config         the sparse fragments those were
   kit/linux-i686-v86-p3.config         generated from, by olddefconfig
   kit/linux-i686-v86-p4.config
+  kit/linux-i686-v86-p6.config
 
 Upstream tarball plus the committed configuration is what reproduces the
 binaries we publish; reports/P1.md and reports/P2.md describe the build.
