@@ -269,7 +269,9 @@
     <h2>What this page can and cannot see</h2>
     <p>
       Your key is typed at the setup wizard's own hidden prompt, inside
-      the machine in this tab. This page never reads it.
+      the machine in this tab. This page passes your keystrokes to that
+      machine and nowhere else, and the key is gone when you close the
+      tab.
     </p>
     <p>
       Files you add are visible to the model, and on the networked tier
@@ -277,11 +279,11 @@
       They live in this tab's memory and are gone when you close it.
     </p>
     <p>
-      Requests to your provider are encrypted <b>inside</b> that machine,
+      Requests to your provider are encrypted inside that machine,
       so the relay that carries them holds ciphertext. It can see which
       provider you are contacting and how many bytes moved, and it cannot
       read your key, your prompts or the replies. That does not depend on
-      trusting the relay: it is what terminating TLS inside the guest
+      trusting the relay: it is what terminating TLS inside the machine
       means.
     </p>
     <p>
@@ -290,9 +292,9 @@
       nothing from the machine in this tab.
     </p>
     <p>
-      This page shows the commit it was built from, and you can rebuild
-      it. <b>Run it yourself:</b> the source and the deployment runbook
-      are linked below.
+      This page shows the commit it was built from. The source and the
+      deployment runbook are linked below, so you can rebuild it and run
+      it yourself.
     </p>
   </div>
 
