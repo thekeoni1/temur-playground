@@ -326,7 +326,7 @@ async function fetchState(url) {
       got += chunk.byteLength;
       if (total) barEl.style.width = ((got / total) * 100).toFixed(1) + "%";
       status(
-        "fetching snapshot: " +
+        "loading the machine: " +
           fmtMB(got) +
           (total ? " / " + fmtMB(total) : "") +
           " (gzip on the wire)",
@@ -569,7 +569,7 @@ function renderStamp() {
 async function main() {
   renderStamp();
   if (typeof DecompressionStream === "undefined") {
-    status("this browser has no DecompressionStream; cannot gunzip the snapshot", true);
+    status("this browser has no DecompressionStream; cannot unpack the machine image", true);
     return;
   }
 
@@ -635,7 +635,7 @@ async function main() {
   try {
     state = await fetchState(snapUrl);
   } catch (e) {
-    status("snapshot fetch failed: " + e.message, true);
+    status("could not load the machine: " + e.message, true);
     return;
   }
   const tFetched = performance.now();
