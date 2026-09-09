@@ -146,7 +146,7 @@ const CONSOLE_FIX = "stty icrnl; ";
 // greeting alone.
 const OFFLINE_MOTD =
   "clear; printf '%s\\n' " +
-  "'temur in a browser: a throwaway Linux computer in your browser tab.' " +
+  "'temur in a browser: a throwaway Linux computer in this tab.' " +
   "'' " +
   "'This one cannot reach an AI provider, so temur will start but cannot' " +
   "'answer. Run temur doctor to see why. Everything else is an ordinary' " +
@@ -747,10 +747,10 @@ async function main() {
               "Networked tier. The terminal is running  temur init , temur's " +
               "own setup wizard: pick a provider, then paste your API key at " +
               "its hidden prompt (paste with Ctrl-Shift-V). The key is typed " +
-              "into the emulated machine, not into this page, and it is gone " +
-              "when you close the tab. Ctrl-C leaves the wizard at a shell, " +
-              "where  temur init ,  temur  and  temur doctor  are the three " +
-              "commands.";
+              "into the emulated machine, and this page never reads it. It " +
+              "is gone when you close the tab. Ctrl-C leaves the wizard at a " +
+              "shell, where  temur init ,  temur  and  temur doctor  are the " +
+              "three commands.";
             noticeEl.className = "notice ok";
           }
           status(
