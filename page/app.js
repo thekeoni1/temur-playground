@@ -747,10 +747,9 @@ async function main() {
               "Networked tier. The terminal is running  temur init , temur's " +
               "own setup wizard: pick a provider, then paste your API key at " +
               "its hidden prompt (paste with Ctrl-Shift-V). The key is typed " +
-              "into the emulated machine, and this page never reads it. It " +
-              "is gone when you close the tab. Ctrl-C leaves the wizard at a " +
-              "shell, where  temur init ,  temur  and  temur doctor  are the " +
-              "three commands.";
+              "into the emulated machine and is gone when you close the tab. " +
+              "Ctrl-C leaves the wizard at a shell, where  temur init , " +
+              " temur  and  temur doctor  are the three commands.";
             noticeEl.className = "notice ok";
           }
           status(
