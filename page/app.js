@@ -446,8 +446,9 @@ function watchRelay(emulator) {
       banner(
         "Relay connection lost. Requests from the guest will HANG rather " +
           "than fail: the connection was accepted inside this page before the " +
-          "relay went away, so nothing tells the guest it is gone. Restart the " +
-          "relay and this notice clears, or reload to run without a provider.",
+          "relay went away, so nothing tells the guest it is gone. Reload the " +
+          "page. It reconnects if the relay is back, otherwise it runs " +
+          "without a provider.",
       );
     }
   }
