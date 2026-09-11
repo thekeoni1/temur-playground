@@ -1,0 +1,153 @@
+{
+ "label": "networked",
+ "statePath": "build/state-p7-net.bin",
+ "wroteConfig": true,
+ "capBytes": 16777216,
+ "documents": [
+  {
+   "name": "big.pdf",
+   "sizeBytes": 16264413
+  },
+  {
+   "name": "big.xlsx",
+   "sizeBytes": 16317903
+  }
+ ],
+ "dropMs": 52,
+ "shareTotalBytes": 32582316,
+ "memory": [
+  {
+   "when": "1 before the drop",
+   "memFreeKb": 83552,
+   "memAvailableKb": 81464,
+   "cachedKb": 11148
+  },
+  {
+   "when": "1b after the drop",
+   "memFreeKb": 83552,
+   "memAvailableKb": 81464,
+   "cachedKb": 11148
+  },
+  {
+   "when": "2 after reading big.pdf",
+   "memFreeKb": 79180,
+   "memAvailableKb": 77096,
+   "cachedKb": 11192
+  },
+  {
+   "when": "3 after reading big.xlsx",
+   "memFreeKb": 77096,
+   "memAvailableKb": 75012,
+   "cachedKb": 11196
+  }
+ ],
+ "reads": [
+  {
+   "name": "big.pdf",
+   "sizeBytes": 16264413,
+   "turnMs": 5508,
+   "outcome": "clean read",
+   "toolResultBytes": 8337,
+   "toolResultFirstLine": "<path>/files/big.pdf</path>",
+   "succeededMarks": 1,
+   "refusedMarks": 0,
+   "reachedEnd": true,
+   "guestAlive": true,
+   "oomSigns": [],
+   "memAfter": {
+    "when": "2 after reading big.pdf",
+    "memFreeKb": 79180,
+    "memAvailableKb": 77096,
+    "cachedKb": 11192
+   },
+   "memPeakDuringRead": {
+    "minFreeKb": 52232,
+    "minAvailableKb": 50148,
+    "samples": 7
+   }
+  },
+  {
+   "name": "big.xlsx",
+   "sizeBytes": 16317903,
+   "turnMs": 29527,
+   "outcome": "clean read",
+   "toolResultBytes": 8337,
+   "toolResultFirstLine": "<path>/files/big.xlsx</path>",
+   "succeededMarks": 1,
+   "refusedMarks": 0,
+   "reachedEnd": true,
+   "guestAlive": true,
+   "oomSigns": [],
+   "memAfter": {
+    "when": "3 after reading big.xlsx",
+    "memFreeKb": 77096,
+    "memAvailableKb": 75012,
+    "cachedKb": 11196
+   },
+   "memPeakDuringRead": {
+    "minFreeKb": 27224,
+    "minAvailableKb": 25140,
+    "samples": 30
+   }
+  }
+ ],
+ "results": {
+  "the snapshot's temur is v0.34.0": {
+   "ok": true,
+   "detail": "temur 0.34.0"
+  },
+  "guest is responsive before anything is dropped": {
+   "ok": true
+  },
+  "both documents arrived over the page's upload path": {
+   "ok": true
+  },
+  "scripted model planted": {
+   "ok": true
+  },
+  "scripted model listening on 127.0.0.1:8080": {
+   "ok": true
+  },
+  "throwaway config written (this tier ships none)": {
+   "ok": true
+  },
+  "turn 1 read plan written": {
+   "ok": true
+  },
+  "turn 1 memory sampler running": {
+   "ok": true
+  },
+  "GATE big.pdf: the guest did not die": {
+   "ok": true,
+   "detail": "console still answers"
+  },
+  "GATE big.pdf: the page did not hang (the turn returned)": {
+   "ok": true,
+   "detail": "5.5 s"
+  },
+  "GATE big.pdf: a clean read OR temur's own size refusal": {
+   "ok": true,
+   "detail": "CLEAN READ, the marker came back in the extracted text"
+  },
+  "turn 2 read plan written": {
+   "ok": true
+  },
+  "turn 2 memory sampler running": {
+   "ok": true
+  },
+  "GATE big.xlsx: the guest did not die": {
+   "ok": true,
+   "detail": "console still answers"
+  },
+  "GATE big.xlsx: the page did not hang (the turn returned)": {
+   "ok": true,
+   "detail": "29.5 s"
+  },
+  "GATE big.xlsx: a clean read OR temur's own size refusal": {
+   "ok": true,
+   "detail": "CLEAN READ, the marker came back in the extracted text"
+  }
+ },
+ "failed": 0,
+ "gate": "PASS"
+}
