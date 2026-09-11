@@ -829,17 +829,41 @@ async function main() {
 // at 1 MiB, 1.6 s at 8 MiB, 3.0 s at 16 MiB. Content hashes matched at
 // every size, so these are comfort limits, not correctness ones.
 //
-// 8 MiB per file is where a file stops being something the guest can
-// pick up briskly, and it is already far past anything a model will read
-// in one go. 32 MiB in total keeps the whole share well inside a guest
-// that has 128 MB of RAM and a filesystem that lives in this tab, with
-// room for the machine itself.
+// THE PER-FILE CAP IS THE ONE THAT COULD KILL THE GUEST, which is why
+// 16 MiB was measured before it shipped. Reading a document is not a
+// copy: temur's office reader pulls ONE file into a machine with 128 MB
+// of RAM and extracts it there, so the per-file cap sets the peak the
+// guest has to survive. Both tiers were measured on the v0.34.0 snapshot
+// with a valid document just under the new cap, delivered through this
+// same create_file path, with guest memory sampled every second for the
+// length of the read:
+//
+//   big.pdf   15.51 MiB, 1098 pages      read in 6 s, MemAvailable
+//                                        bottomed out at 49.0 MB
+//   big.xlsx  15.56 MiB, 148,801 rows    read in 29 s, MemAvailable
+//                                        bottomed out at 22.8 MB
+//
+// Both came back as text with their first line intact, and the two tiers
+// agreed to within 2 MB. The spreadsheet is the expensive one because it
+// has no early stop: a PDF is extracted a page at a time and stops once
+// the caller's window is full, while a workbook is inflated and built in
+// full, 72 MB of XML here. 22.8 MB spare was the smallest margin either
+// tier showed, and a sampler reading once a second can miss a shorter
+// spike, so 16 MiB is near what this guest will take. Raising it again
+// means measuring again, and MEM_MB is not a free alternative because it
+// costs every visitor.
+//
+// THE 64 MiB SHARE TOTAL IS THE CHEAP ONE. The 9p filesystem lives in
+// this tab rather than in the guest's RAM, and dropping 31 MiB of
+// documents moved guest MemFree by 0 MB in both runs. The total is
+// bounded because a visitor's tab is not free either. The guest does not
+// pay for it until it reads a file, and then it pays per file.
 //
 // They are refusals, never truncations. A file silently cut in half is
 // worse than a file that did not arrive, because the visitor would find
 // out from the model's confusion rather than from the page.
-const FILE_MAX_BYTES = 8 * 1024 * 1024;
-const SHARE_MAX_BYTES = 32 * 1024 * 1024;
+const FILE_MAX_BYTES = 16 * 1024 * 1024;
+const SHARE_MAX_BYTES = 64 * 1024 * 1024;
 
 const filesEl = document.getElementById("files");
 const fileListEl = document.getElementById("filelist");
