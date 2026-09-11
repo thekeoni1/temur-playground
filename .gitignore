@@ -28,3 +28,6 @@ relay/build-info.json
 # The office-format samples the read proof generates. Regenerable from
 # tools/mkdocs-sample.py, so they are built, not committed.
 build/office/
+
+# The near-cap documents the file-cap gate generates.
+build/bigfiles/
