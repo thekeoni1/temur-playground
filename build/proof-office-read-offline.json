@@ -1,0 +1,67 @@
+{
+ "label": "offline",
+ "statePath": "build/state-p7-offline.bin",
+ "wroteConfig": false,
+ "results": {
+  "the snapshot's temur is v0.34.0": {
+   "ok": true,
+   "detail": "temur 0.34.0"
+  },
+  "the five documents arrived over the page's upload path": {
+   "ok": true
+  },
+  "scripted model planted": {
+   "ok": true
+  },
+  "read plan written": {
+   "ok": true
+  },
+  "scripted model listening on 127.0.0.1:8080": {
+   "ok": true
+  },
+  "the tier's own shipped config is used unchanged": {
+   "ok": true,
+   "detail": "base_url is the local one the offline tier already carries"
+  },
+  "the agent ran to the end of the scripted plan": {
+   "ok": true
+  },
+  "three office reads SUCCEEDED in the guest": {
+   "ok": true
+  },
+  "the two controls FAILED, so the read tool is not merely permissive": {
+   "ok": true,
+   "detail": "3 succeeded, 2 refused, of 5"
+  },
+  "one tool result came back for each of the 5 reads": {
+   "ok": true,
+   "detail": "5 result(s)"
+  },
+  "extracted text of /files/sample.pdf contains \"Temur reads PDF files now.\"": {
+   "ok": true
+  },
+  "extracted text of /files/sample.docx contains \"Word documents become plain text.\"": {
+   "ok": true
+  },
+  "extracted text of /files/sample.xlsx contains \"== Sheet: sales ==\"": {
+   "ok": true
+  },
+  "control /files/not-really.pdf refused with the right sentence": {
+   "ok": true,
+   "detail": "temur could not read this PDF: it is malformed or not a PDF. Ask the user for the text."
+  },
+  "control /files/blob.bin refused with the right sentence": {
+   "ok": true,
+   "detail": "Cannot read binary file: /files/blob.bin. Inspect it with bash instead (e.g. file, unzip -"
+  }
+ },
+ "extracted": [
+  "<path>/files/sample.pdf</path>\n<type>file</type>\n<content>\n1: \n2: \n3: Temur reads PDF files now.\n4: Ship it on the 32-bit sandbox.\n\n(End of file - total 4 lines)\n</content>",
+  "<path>/files/sample.docx</path>\n<type>file</type>\n<content>\n1: Word documents become plain text.\n2: \n\n(End of file - total 2 lines)\n</content>",
+  "<path>/files/sample.xlsx</path>\n<type>file</type>\n<content>\n1: == Sheet: sales ==\n2: region,units\n3: north,42\n4: south,17\n5: \n\n(End of file - total 5 lines)\n</content>",
+  "temur could not read this PDF: it is malformed or not a PDF. Ask the user for the text.",
+  "Cannot read binary file: /files/blob.bin. Inspect it with bash instead (e.g. file, unzip -l, strings)."
+ ],
+ "turn": "cd /files && temur -p 'read the documents in /files' --plain 2>&1; echo Mr62hs\r\r\nm''RC=$?\r\n  [!] prompt profile: compact (context_window 8192 is below 20480; set prompt_profile to \"full\" to override)\r\n  → read\r\n  ✓ read: /files/sample.pdf\r\n  → read\r\n  ✓ read: /files/sample.docx\r\n  → read\r\n  ✓ read: /files/sample.xlsx\r\n  → read\r\n  ✗ read: read\r\n  → read\r\n  ✗ read: read\r\nSTUB WAS HANDED 5 TOOL RESULT(S)\r\nOFFICE-READ-PROOF-END\r\n  (turn: — in / — out, cache read — write — — session: — in / — out, cache read — write —)\r\nMr62hsmRC=0\r\n# ",
+ "failed": 0
+}
