@@ -3,10 +3,10 @@
  "tier": "networked",
  "cleanLanding": true,
  "wizardAtFirstQuestion": true,
- "configPath": "/root/.config/temur/config.json",
+ "configPath": null,
  "relayWatch": "adapter-socket",
- "readyMs": 1987,
- "stampText": "build c1a788c · source, relay included (AGPL-3.0) · deployment runbook · relay /version",
+ "readyMs": 1960,
+ "stampText": "build 5a315cd · source, relay included (AGPL-3.0) · deployment runbook · relay /version",
  "relayWs": "ws://127.0.0.1:8089/",
  "relayWisp": "wisp://127.0.0.1:8089/"
 }
