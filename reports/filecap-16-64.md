@@ -206,7 +206,7 @@ committed one except for readyMs.
     relay/                               0-diff, still 9c9eb67
     page/assets/state-p7-net.bin.gz      0-diff, sha256 7dca4173...b312c3
     page/assets/state-p7-offline.bin.gz  0-diff, sha256 c6f86a6c...33fdc4
-    .gitignore                           0-diff
+    .gitignore                           one line added, see Flagged 3
     tools/stage-page.sh                  0-diff
     tools/gen-steps-*                    0-diff
     THIRD_PARTY.md                       0-diff
@@ -218,7 +218,7 @@ Both snapshot hashes match the v0.34.0 refresh record exactly. The relay
 was RUN locally for the networked measurement and for netcheck, which
 exercises its code without changing it.
 
-## Flagged, not fixed
+## Flagged
 
 1. fmtBytes LABELS MiB VALUES AS "MB". page/app.js:850 divides by
    1024*1024 and prints "MB", so the refusal now reads "larger than the
@@ -231,17 +231,20 @@ exercises its code without changing it.
    self-updated to 16 and 64. If the hint should advertise the new size,
    that wording has to arrive before the ship.
 
-3. build/bigfiles/ IS NOT IGNORED. The v0.34.0 refresh added
-   `build/office/` to .gitignore for exactly this kind of generated
-   sample, but .gitignore is on this kickoff's 0-diff list, so it was left
-   alone rather than edited without a word. The two documents are 31 MiB
-   of generated files that a `git add -A` would sweep into a public repo.
-   They are deleted from the working tree here and regenerate in 11
-   seconds on the next run, so nothing is sitting there now. The one-line
-   follow-up, if wanted:
+3. build/bigfiles/ WAS NOT IGNORED, AND NOW IS. tools/mkbig-sample.py
+   writes 31 MiB of generated documents there and nothing kept them out
+   of a public repository, so a `git add -A` would have swept them in.
+   The v0.34.0 refresh had added `build/office/` for exactly this class of
+   sample, but .gitignore was on this kickoff's 0-diff list, so it was
+   raised rather than edited without a word. It was then approved and
+   closed in a fourth commit, beside build/office/:
 
        # The near-cap documents the file-cap gate generates.
        build/bigfiles/
+
+   Proved rather than assumed: `git check-ignore -v` matches both
+   documents at .gitignore:33, and with all 31 MiB of them present
+   `git status` reports only tracked changes.
 
 ## Reproduce
 
