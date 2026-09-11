@@ -1,6 +1,6 @@
 {
  "label": "offline",
- "statePath": "build/state-p6-offline.bin",
+ "statePath": "build/state-p7-offline.bin",
  "results": {
   "ICRNL on in the restored snapshot, no page nudge": {
    "ok": true
@@ -14,7 +14,7 @@
   },
   "upload: host sha256 == guest sha256": {
    "ok": true,
-   "detail": "host 97e7c284b4c655f6 guest 97e7c284b4c655f6 (65536 B)"
+   "detail": "host c2553449a8bfdee5 guest c2553449a8bfdee5 (65536 B)"
   },
   "same hash after drop_caches (not served from cache)": {
    "ok": true
@@ -25,7 +25,7 @@
   },
   "download: guest sha256 == bytes the page reads back": {
    "ok": true,
-   "detail": "guest d2dca8f2818f3a5c js d2dca8f2818f3a5c (65536 B)"
+   "detail": "guest cd8e8841a9545209 js cd8e8841a9545209 (65536 B)"
   },
   "temur is present and the share is a working directory": {
    "ok": true

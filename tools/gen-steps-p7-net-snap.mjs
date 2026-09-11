@@ -1,4 +1,4 @@
-// Steps for the P6 NETWORKED page snapshot (state-p6-net.bin).
+// Steps for the P7 NETWORKED page snapshot (state-p7-net.bin).
 //
 // Beside tools/gen-steps-p5-page-snap.mjs, which stays as the record of
 // what the P3b pass built. P6 changes the machine under these steps, not
@@ -134,5 +134,5 @@ const steps = [
   { name: "settle", cmd: "echo P3B-INIT-LANDING-SNAPSHOT-POINT" },
 ];
 
-fs.writeFileSync("build/steps-p6-net-snap.json", JSON.stringify(steps, null, 1));
+fs.writeFileSync("build/steps-p7-net-snap.json", JSON.stringify(steps, null, 1));
 console.log("written: " + steps.length + " steps");

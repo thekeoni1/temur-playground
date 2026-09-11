@@ -20,7 +20,11 @@ page/vendor/
 # re-include a file whose PARENT DIRECTORY is excluded, so excluding the
 # directory itself would make the negation below silently do nothing.
 page/assets/*
-!page/assets/state-p6-net.bin.gz
-!page/assets/state-p6-offline.bin.gz
+!page/assets/state-p7-net.bin.gz
+!page/assets/state-p7-offline.bin.gz
 page/build-info.js
 relay/build-info.json
+
+# The office-format samples the read proof generates. Regenerable from
+# tools/mkdocs-sample.py, so they are built, not committed.
+build/office/

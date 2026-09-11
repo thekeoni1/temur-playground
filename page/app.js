@@ -57,13 +57,18 @@ const REPO_URL = "https://github.com/thekeoni1/temur-playground";
 // link exists is the cheapest kind to falsify.
 const RUNBOOK_URL = REPO_URL + "/blob/main/docs/VPS-RUNBOOK.md";
 
-// THE P6 PAIR. Both tiers are now built from ONE kernel and ONE overlay,
-// which is what finally gets console.sh and the MOTD to the offline tier:
-// it used to be built from the P2-era rootfs and had never received
-// either. The p5 and P2 snapshots stay committed beside these, untouched,
-// as the record of what the keyed runs before this milestone used.
-const SNAP_ONLINE = "assets/state-p6-net.bin.gz";
-const SNAP_OFFLINE = "assets/state-p6-offline.bin.gz";
+// THE P7 PAIR: the P6 machine, rebuilt on the released temur v0.34.0, which
+// reads PDF, Word and spreadsheet files. Both tiers still come from ONE
+// kernel and ONE overlay, and the kernel is unchanged from P6 (kit/bzImage-p6)
+// because only the binary inside the overlay moved.
+//
+// Snapshots version by FILENAME and never by ?v=: tools/asset-stamp.mjs
+// excludes them from stamping by design, so changed content MUST arrive
+// under a changed name or a visitor's cache serves them the old machine.
+// The p6 pair is removed from the working tree in the same commit that adds
+// this one; git history keeps both.
+const SNAP_ONLINE = "assets/state-p7-net.bin.gz";
+const SNAP_OFFLINE = "assets/state-p7-offline.bin.gz";
 
 // Networking does not survive restore_state: the guest kernel's interface
 // state comes back but the JS-side adapter and its websocket are new, and

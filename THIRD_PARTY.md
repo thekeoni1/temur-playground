@@ -61,8 +61,8 @@ does not tell a reader which file carries which obligation.
 
   THE TWO SERVED SNAPSHOTS CARRY ALL OF THE ABOVE:
 
-    page/assets/state-p6-net.bin.gz
-    page/assets/state-p6-offline.bin.gz
+    page/assets/state-p7-net.bin.gz
+    page/assets/state-p7-offline.bin.gz
 
   They are memory images of the running machine, so they CONTAIN the
   kernel and the BusyBox userspace in executable form. Serving them from
