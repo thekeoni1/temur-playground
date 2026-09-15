@@ -57,18 +57,18 @@ const REPO_URL = "https://github.com/thekeoni1/temur-playground";
 // link exists is the cheapest kind to falsify.
 const RUNBOOK_URL = REPO_URL + "/blob/main/docs/VPS-RUNBOOK.md";
 
-// THE P7 PAIR: the P6 machine, rebuilt on the released temur v0.34.0, which
-// reads PDF, Word and spreadsheet files. Both tiers still come from ONE
-// kernel and ONE overlay, and the kernel is unchanged from P6 (kit/bzImage-p6)
-// because only the binary inside the overlay moved.
+// THE P8 PAIR: the P6 machine, rebuilt on the released temur v0.35.0 for
+// the launch. Both tiers still come from ONE kernel and ONE overlay, and
+// the kernel is unchanged from P6 (kit/bzImage-p6) because only the binary
+// inside the overlay moved.
 //
 // Snapshots version by FILENAME and never by ?v=: tools/asset-stamp.mjs
 // excludes them from stamping by design, so changed content MUST arrive
 // under a changed name or a visitor's cache serves them the old machine.
-// The p6 pair is removed from the working tree in the same commit that adds
+// The p7 pair is removed from the working tree in the same commit that adds
 // this one; git history keeps both.
-const SNAP_ONLINE = "assets/state-p7-net.bin.gz";
-const SNAP_OFFLINE = "assets/state-p7-offline.bin.gz";
+const SNAP_ONLINE = "assets/state-p8-net.bin.gz";
+const SNAP_OFFLINE = "assets/state-p8-offline.bin.gz";
 
 // Networking does not survive restore_state: the guest kernel's interface
 // state comes back but the JS-side adapter and its websocket are new, and
@@ -833,25 +833,30 @@ async function main() {
 // 16 MiB was measured before it shipped. Reading a document is not a
 // copy: temur's office reader pulls ONE file into a machine with 128 MB
 // of RAM and extracts it there, so the per-file cap sets the peak the
-// guest has to survive. Both tiers were measured on the v0.34.0 snapshot
-// with a valid document just under the new cap, delivered through this
-// same create_file path, with guest memory sampled every second for the
-// length of the read:
+// guest has to survive. Both tiers were re-measured on the v0.35.0
+// snapshot with a valid document just under the cap, delivered through
+// this same create_file path, with guest memory sampled every second for
+// the length of the read:
 //
-//   big.pdf   15.51 MiB, 1098 pages      read in 6 s, MemAvailable
-//                                        bottomed out at 49.0 MB
-//   big.xlsx  15.56 MiB, 148,801 rows    read in 29 s, MemAvailable
-//                                        bottomed out at 22.8 MB
+//   big.pdf   15.51 MiB, 1098 pages      read in 4.5 s, MemAvailable
+//                                        bottomed out at 48.6 MB
+//   big.xlsx  15.56 MiB, 148,801 rows    REFUSED in 0.5 s, MemAvailable
+//                                        never left 74.8 MB
 //
-// Both came back as text with their first line intact, and the two tiers
-// agreed to within 2 MB. The spreadsheet is the expensive one because it
-// has no early stop: a PDF is extracted a page at a time and stops once
-// the caller's window is full, while a workbook is inflated and built in
-// full, 72 MB of XML here. 22.8 MB spare was the smallest margin either
-// tier showed, and a sampler reading once a second can miss a shorter
-// spike, so 16 MiB is near what this guest will take. Raising it again
-// means measuring again, and MEM_MB is not a free alternative because it
-// costs every visitor.
+// THE SPREADSHEET NUMBER CHANGED UNDER US, and for the better. On v0.34.0
+// this workbook was inflated and built in full, 72 MB of XML, which took
+// 29 s and left only 22.8 MB spare: the tightest margin the gate ever saw.
+// v0.35.0 refuses it instead, with "This workbook expands to more than
+// 64 MiB; temur will not unpack it", so the read that used to set the
+// guest's peak no longer happens. The PDF is now the expensive case, and
+// it is extracted a page at a time and stops once the caller's window is
+// full. 48.6 MB spare is the smallest margin either tier showed.
+//
+// That headroom belongs to temur's own expansion guard, not to this cap,
+// so it is not licence to raise 16 MiB: a document that expands to just
+// under 64 MiB would still be unpacked in full. Raising it means
+// measuring again, and MEM_MB is not a free alternative because it costs
+// every visitor.
 //
 // THE 64 MiB SHARE TOTAL IS THE CHEAP ONE. The 9p filesystem lives in
 // this tab rather than in the guest's RAM, and dropping 31 MiB of
