@@ -56,8 +56,9 @@ const REPO_URL = "https://github.com/thekeoni1/temur-playground";
 // Variant B makes a checkable claim about this page, and a claim that a
 // link exists is the cheapest kind to falsify.
 const RUNBOOK_URL = REPO_URL + "/blob/main/docs/VPS-RUNBOOK.md";
-// A snapshot refresh must move TEMUR_VERSION with the state-p*- filenames (the same trap as ?v=).
+// A snapshot refresh must move TEMUR_VERSION and TEMUR_SHA256 with the state-p*- filenames (the same trap as ?v=).
 const TEMUR_VERSION = "v0.35.0";
+const TEMUR_SHA256 = "7282830a760cd0ee40ed13f577762969b54c27a15e4887f703e2050d1ba690a0";
 const TEMUR_RELEASE_URL = "https://github.com/thekeoni1/Temur/releases/tag/" + TEMUR_VERSION;
 
 // THE P8 PAIR: the P6 machine, rebuilt on the released temur v0.35.0 for
@@ -561,6 +562,10 @@ function renderStamp() {
   a4.href = TEMUR_RELEASE_URL;
   a4.textContent = "release";
   tv.appendChild(a4);
+  tv.appendChild(document.createTextNode(", sha256 "));
+  const sha = document.createElement("code");
+  sha.textContent = TEMUR_SHA256;
+  tv.appendChild(sha);
   tv.appendChild(document.createTextNode(")"));
   el.appendChild(tv);
 

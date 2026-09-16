@@ -74,6 +74,9 @@
     font-size: 12px;
   }
   #stamp a { color: #89a; }
+  /* The footer's sha is one 64-character token: without an anywhere-break
+     it widens the page past a phone's viewport (measured at 375 and 320). */
+  #stamp code { overflow-wrap: anywhere; }
   /* The questions block. Plain <details>, closed by default, so the
      terminal is still the first thing on the page and nothing here
      pushes it down. No script: <details> opens by itself, from a click
