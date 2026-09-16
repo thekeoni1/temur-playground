@@ -56,6 +56,9 @@ const REPO_URL = "https://github.com/thekeoni1/temur-playground";
 // Variant B makes a checkable claim about this page, and a claim that a
 // link exists is the cheapest kind to falsify.
 const RUNBOOK_URL = REPO_URL + "/blob/main/docs/VPS-RUNBOOK.md";
+// A snapshot refresh must move TEMUR_VERSION with the state-p*- filenames (the same trap as ?v=).
+const TEMUR_VERSION = "v0.35.0";
+const TEMUR_RELEASE_URL = "https://github.com/thekeoni1/Temur/releases/tag/" + TEMUR_VERSION;
 
 // THE P8 PAIR: the P6 machine, rebuilt on the released temur v0.35.0 for
 // the launch. Both tiers still come from ONE kernel and ONE overlay, and
@@ -551,6 +554,15 @@ function renderStamp() {
     );
   }
   el.appendChild(src);
+
+  const tv = document.createElement("span");
+  tv.appendChild(document.createTextNode(" \u00b7 temur " + TEMUR_VERSION + " ("));
+  const a4 = document.createElement("a");
+  a4.href = TEMUR_RELEASE_URL;
+  a4.textContent = "release";
+  tv.appendChild(a4);
+  tv.appendChild(document.createTextNode(")"));
+  el.appendChild(tv);
 
   const rb = document.createElement("span");
   rb.appendChild(document.createTextNode(" \u00b7 "));
