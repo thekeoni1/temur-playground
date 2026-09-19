@@ -36,12 +36,9 @@ SHARE=/files
 PLAN=/tmp/stub-plan
 COUNT=/tmp/stub-count
 
-N=$(cat "$COUNT" 2>/dev/null || echo 0)
-N=$((N + 1))
-echo "$N" > "$COUNT"
-
-# --- read the request: headers, then exactly Content-Length bytes -------
+# --- read the request: the request line, headers, then the body ---------
 CR=$(printf '\r')
+IFS= read -r REQLINE
 len=0
 while IFS= read -r line; do
   case "$line" in
@@ -49,6 +46,33 @@ while IFS= read -r line; do
     [Cc]ontent-[Ll]ength:*) len=$(echo "$line" | tr -dc '0-9') ;;
   esac
 done
+
+# ONLY A CHAT POST IS A SCRIPTED TURN, and the counter moves only for one.
+# temur v0.36.0 (T63 P4) added a keyless GET of {base}/models before the
+# first turn to read the context window, and falls back to /props when that
+# yields nothing. Those are not turns. Counting every CONNECTION instead of
+# every chat request made the probe consume the plan's first line, so each
+# read shifted by one: the plan's first document was never read, the last
+# request was never recorded, and the proof then failed on files temur had
+# handled correctly. Anything that is not a chat POST is refused here
+# without touching the counter, which is also what an unconfigured server
+# would do.
+case "$REQLINE" in
+  [Pp][Oo][Ss][Tt]*chat/completions*) ;;
+  *)
+    if [ "${len:-0}" -gt 0 ]; then head -c "$len" > /dev/null; fi
+    printf 'HTTP/1.1 404 Not Found\r\n'
+    printf 'Content-Type: application/json\r\n'
+    printf 'Connection: close\r\n'
+    printf '\r\n'
+    printf '{"error":"the scripted model serves chat/completions only"}'
+    exit 0
+    ;;
+esac
+
+N=$(cat "$COUNT" 2>/dev/null || echo 0)
+N=$((N + 1))
+echo "$N" > "$COUNT"
 if [ "${len:-0}" -gt 0 ]; then
   # head -c, not dd bs=1: the body grows with every tool result carried
   # forward, and a byte-at-a-time read of 30 kB inside the emulator is

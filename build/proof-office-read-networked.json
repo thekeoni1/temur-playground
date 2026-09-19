@@ -1,11 +1,11 @@
 {
  "label": "networked",
- "statePath": "build/state-p8-net.bin",
+ "statePath": "build/state-p9-net.bin",
  "wroteConfig": true,
  "results": {
-  "the snapshot's temur is v0.35.0": {
+  "the snapshot's temur is v0.37.0": {
    "ok": true,
-   "detail": "temur 0.35.0"
+   "detail": "temur 0.37.0"
   },
   "the five documents arrived over the page's upload path": {
    "ok": true
@@ -61,6 +61,6 @@
   "temur could not read this PDF: it is malformed or not a PDF. Ask the user for the text.",
   "Cannot read binary file: /files/blob.bin. Inspect it with bash instead (e.g. file, unzip -l, strings)."
  ],
- "turn": "cd /files && temur -p 'read the documents in /files' --plain 2>&1; echo Mxmedz\r\r\n0''RC=$?\r\n  [!] prompt profile: compact (context_window 8192 is below 20480; set prompt_profile to \"full\" to override)\r\n  → read\r\n  ✓ read: /files/sample.pdf\r\n  → read\r\n  ✓ read: /files/sample.docx\r\n  → read\r\n  ✓ read: /files/sample.xlsx\r\n  → read\r\n  ✗ read: read\r\n  → read\r\n  ✗ read: read\r\nSTUB WAS HANDED 5 TOOL RESULT(S)\r\nOFFICE-READ-PROOF-END\r\n  (turn: — in / — out, cache read — write — — session: — in / — out, cache read — write —)\r\nMxmedz0RC=0\r\n# ",
+ "turn": "cd /files && temur -p 'read the documents in /files' --plain 2>&1; echo M8hytb\r\r\nu''RC=$?\r\n  [!] prompt profile: compact (context_window 8192 is below 20480; set prompt_profile to \"full\" to override)\r\n  → read\r\n  ✓ read: /files/sample.pdf\r\n  → read\r\n  ✓ read: /files/sample.docx\r\n  → read\r\n  ✓ read: /files/sample.xlsx\r\n  → read\r\n  ✗ read: read\r\n  → read\r\n  ✗ read: read\r\nSTUB WAS HANDED 5 TOOL RESULT(S)\r\nOFFICE-READ-PROOF-END\r\n  (turn: — in / — out, cache read — write — — session: — in / — out, cache read — write —)\r\nM8hytbuRC=0\r\n# ",
  "failed": 0
 }

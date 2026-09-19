@@ -1,6 +1,6 @@
 {
  "mode": "textcheck",
- "tier": "offline",
+ "tier": "networked",
  "terms": 17,
  "markupCount": 0,
  "markupHits": {},

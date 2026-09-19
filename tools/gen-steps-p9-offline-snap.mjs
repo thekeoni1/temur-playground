@@ -1,4 +1,4 @@
-// Steps for the P8 OFFLINE page snapshot (state-p8-offline.bin).
+// Steps for the P9 OFFLINE page snapshot (state-p9-offline.bin).
 //
 // THIS TIER FINALLY GETS THE OVERLAY. Until now the offline snapshot was
 // built from the P2-era rootfs, so it never received console.sh or the
@@ -67,7 +67,7 @@ const steps = [
 ];
 
 fs.writeFileSync(
-  "build/steps-p8-offline-snap.json",
+  "build/steps-p9-offline-snap.json",
   JSON.stringify(steps, null, 1),
 );
 console.log("written: " + steps.length + " steps");
