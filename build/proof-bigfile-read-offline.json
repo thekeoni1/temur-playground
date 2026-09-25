@@ -1,6 +1,6 @@
 {
  "label": "offline",
- "statePath": "build/state-p9-offline.bin",
+ "statePath": "build/state-p10-offline.bin",
  "wroteConfig": false,
  "capBytes": 16777216,
  "documents": [
@@ -13,39 +13,39 @@
    "sizeBytes": 16317903
   }
  ],
- "dropMs": 44,
+ "dropMs": 101,
  "shareTotalBytes": 32582316,
  "memory": [
   {
    "when": "1 before the drop",
-   "memFreeKb": 85180,
-   "memAvailableKb": 83084,
-   "cachedKb": 9992
+   "memFreeKb": 85216,
+   "memAvailableKb": 83120,
+   "cachedKb": 10004
   },
   {
    "when": "1b after the drop",
-   "memFreeKb": 85180,
-   "memAvailableKb": 83084,
-   "cachedKb": 9992
+   "memFreeKb": 85216,
+   "memAvailableKb": 83120,
+   "cachedKb": 10004
   },
   {
    "when": "2 after reading big.pdf",
-   "memFreeKb": 80356,
-   "memAvailableKb": 78264,
-   "cachedKb": 10032
+   "memFreeKb": 80348,
+   "memAvailableKb": 78256,
+   "cachedKb": 10044
   },
   {
    "when": "3 after reading big.xlsx",
-   "memFreeKb": 80308,
-   "memAvailableKb": 78220,
-   "cachedKb": 10028
+   "memFreeKb": 80300,
+   "memAvailableKb": 78212,
+   "cachedKb": 10040
   }
  ],
  "reads": [
   {
    "name": "big.pdf",
    "sizeBytes": 16264413,
-   "turnMs": 5002,
+   "turnMs": 5008,
    "outcome": "clean read",
    "toolResultBytes": 8337,
    "toolResultFirstLine": "<path>/files/big.pdf</path>",
@@ -56,13 +56,13 @@
    "oomSigns": [],
    "memAfter": {
     "when": "2 after reading big.pdf",
-    "memFreeKb": 80356,
-    "memAvailableKb": 78264,
-    "cachedKb": 10032
+    "memFreeKb": 80348,
+    "memAvailableKb": 78256,
+    "cachedKb": 10044
    },
    "memPeakDuringRead": {
-    "minFreeKb": 53464,
-    "minAvailableKb": 51372,
+    "minFreeKb": 53360,
+    "minAvailableKb": 51272,
     "samples": 6
    }
   },
@@ -80,21 +80,21 @@
    "oomSigns": [],
    "memAfter": {
     "when": "3 after reading big.xlsx",
-    "memFreeKb": 80308,
-    "memAvailableKb": 78220,
-    "cachedKb": 10028
+    "memFreeKb": 80300,
+    "memAvailableKb": 78212,
+    "cachedKb": 10040
    },
    "memPeakDuringRead": {
-    "minFreeKb": 80304,
-    "minAvailableKb": 78212,
+    "minFreeKb": 80292,
+    "minAvailableKb": 78200,
     "samples": 2
    }
   }
  ],
  "results": {
-  "the snapshot's temur is v0.37.0": {
+  "the snapshot's temur is v0.38.0": {
    "ok": true,
-   "detail": "temur 0.37.0"
+   "detail": "temur 0.38.0"
   },
   "guest is responsive before anything is dropped": {
    "ok": true

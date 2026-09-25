@@ -1,4 +1,4 @@
-c8ce638185b67eb7c63c740d49a49ddcad96549ac34ac9ad63e72bc0137d0584  temur-v0.37.0-aarch64-unknown-linux-musl
-28015e6b4609741944bd23609d6144a80e94e0e564b781a0d1bf6a6e9795fb2f  temur-v0.37.0-armv7-unknown-linux-musleabihf
-dbd380571743071a906df2c69eed4b2073535a6e24fb5c592ddfdf3e899718d3  temur-v0.37.0-i686-unknown-linux-musl
-21068507d2cb51548ebcde76b5c9f80aed287a9d82cba432e47f4231755bfc63  temur-v0.37.0-x86_64-unknown-linux-musl
+314c13dc61d8e9bfc12c012087cdbb4c893f257e9b796d6af87e70e584986680  temur-v0.38.0-aarch64-unknown-linux-musl
+3f78fa8931f951be51ce123639065cd999cd135deb7b06d36b67eaefe9d83076  temur-v0.38.0-armv7-unknown-linux-musleabihf
+542e56abcf9066e464c5dcef079c4dfba47dc731d11ffd97645af04e48a9c922  temur-v0.38.0-i686-unknown-linux-musl
+7529e0a21609c2dba1ea42bdf4a324133fc62946dab66d73e2d32b020f91904f  temur-v0.38.0-x86_64-unknown-linux-musl

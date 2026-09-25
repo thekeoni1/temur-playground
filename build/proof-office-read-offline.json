@@ -1,11 +1,11 @@
 {
  "label": "offline",
- "statePath": "build/state-p9-offline.bin",
+ "statePath": "build/state-p10-offline.bin",
  "wroteConfig": false,
  "results": {
-  "the snapshot's temur is v0.37.0": {
+  "the snapshot's temur is v0.38.0": {
    "ok": true,
-   "detail": "temur 0.37.0"
+   "detail": "temur 0.38.0"
   },
   "the five documents arrived over the page's upload path": {
    "ok": true
@@ -62,6 +62,6 @@
   "temur could not read this PDF: it is malformed or not a PDF. Ask the user for the text.",
   "Cannot read binary file: /files/blob.bin. Inspect it with bash instead (e.g. file, unzip -l, strings)."
  ],
- "turn": "cd /files && temur -p 'read the documents in /files' --plain 2>&1; echo Msfb4g\r\r\n4''RC=$?\r\n  [!] prompt profile: compact (context_window 8192 is below 20480; set prompt_profile to \"full\" to override)\r\n  → read\r\n  ✓ read: /files/sample.pdf\r\n  → read\r\n  ✓ read: /files/sample.docx\r\n  → read\r\n  ✓ read: /files/sample.xlsx\r\n  → read\r\n  ✗ read: read\r\n  → read\r\n  ✗ read: read\r\nSTUB WAS HANDED 5 TOOL RESULT(S)\r\nOFFICE-READ-PROOF-END\r\n  (turn: — in / — out, cache read — write — — session: — in / — out, cache read — write —)\r\nMsfb4g4RC=0\r\n# ",
+ "turn": "cd /files && temur -p 'read the documents in /files' --plain 2>&1; echo M8u0e9\r\r\nm''RC=$?\r\n  [!] prompt profile: compact (context_window 8192 is below 20480; set prompt_profile to \"full\" to override)\r\n  → read\r\n  ✓ read: /files/sample.pdf\r\n  → read\r\n  ✓ read: /files/sample.docx\r\n  → read\r\n  ✓ read: /files/sample.xlsx\r\n  → read\r\n  ✗ read: read\r\n  → read\r\n  ✗ read: read\r\nSTUB WAS HANDED 5 TOOL RESULT(S)\r\nOFFICE-READ-PROOF-END\r\n  (turn: — in / — out, cache read — write — — session: — in / — out, cache read — write —)\r\nM8u0e9mRC=0\r\n# ",
  "failed": 0
 }

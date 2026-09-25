@@ -57,11 +57,11 @@ const REPO_URL = "https://github.com/thekeoni1/temur-playground";
 // link exists is the cheapest kind to falsify.
 const RUNBOOK_URL = REPO_URL + "/blob/main/docs/VPS-RUNBOOK.md";
 // A snapshot refresh must move TEMUR_VERSION and TEMUR_SHA256 with the state-p*- filenames (the same trap as ?v=).
-const TEMUR_VERSION = "v0.37.0";
-const TEMUR_SHA256 = "dbd380571743071a906df2c69eed4b2073535a6e24fb5c592ddfdf3e899718d3";
+const TEMUR_VERSION = "v0.38.0";
+const TEMUR_SHA256 = "542e56abcf9066e464c5dcef079c4dfba47dc731d11ffd97645af04e48a9c922";
 const TEMUR_RELEASE_URL = "https://github.com/thekeoni1/Temur/releases/tag/" + TEMUR_VERSION;
 
-// THE P9 PAIR: the P6 machine, rebuilt on the released temur v0.37.0 for
+// THE P10 PAIR: the P6 machine, rebuilt on the released temur v0.38.0 for
 // the launch. Both tiers still come from ONE kernel and ONE overlay, and
 // the kernel is unchanged from P6 (kit/bzImage-p6) because only the binary
 // inside the overlay moved.
@@ -69,10 +69,10 @@ const TEMUR_RELEASE_URL = "https://github.com/thekeoni1/Temur/releases/tag/" + T
 // Snapshots version by FILENAME and never by ?v=: tools/asset-stamp.mjs
 // excludes them from stamping by design, so changed content MUST arrive
 // under a changed name or a visitor's cache serves them the old machine.
-// The p8 pair is removed from the working tree in the same commit that adds
+// The p9 pair is removed from the working tree in the same commit that adds
 // this one; git history keeps both.
-const SNAP_ONLINE = "assets/state-p9-net.bin.gz";
-const SNAP_OFFLINE = "assets/state-p9-offline.bin.gz";
+const SNAP_ONLINE = "assets/state-p10-net.bin.gz";
+const SNAP_OFFLINE = "assets/state-p10-offline.bin.gz";
 
 // Networking does not survive restore_state: the guest kernel's interface
 // state comes back but the JS-side adapter and its websocket are new, and
@@ -850,15 +850,14 @@ async function main() {
 // 16 MiB was measured before it shipped. Reading a document is not a
 // copy: temur's office reader pulls ONE file into a machine with 128 MB
 // of RAM and extracts it there, so the per-file cap sets the peak the
-// guest has to survive. Both tiers were re-measured on the v0.37.0
+// guest has to survive. Both tiers were re-measured on the v0.38.0
 // snapshot with a valid document just under the cap, delivered through
 // this same create_file path, with guest memory sampled every second for
 // the length of the read:
 //
-//   big.pdf   15.51 MiB, 1098 pages      read in 5.0 s offline, 4.8 s
-//                                        networked; MemAvailable bottomed
-//                                        out at 50.0 MB, the worse of the
-//                                        two tiers
+//   big.pdf   15.51 MiB, 1098 pages      read in 5.0 s on both tiers;
+//                                        MemAvailable bottomed out at
+//                                        50.0 MB, the worse of the two tiers
 //   big.xlsx  15.56 MiB, 148,801 rows    REFUSED in 0.5 s on both tiers;
 //                                        MemAvailable never left 76.2 MB
 //
@@ -870,9 +869,9 @@ async function main() {
 // set the guest's peak no longer happens. The PDF is now the expensive
 // case, and it is extracted a page at a time and stops once the caller's
 // window is full. 50.0 MB spare is the smallest margin either tier showed
-// on v0.37.0, about 1.4 MB roomier than the same read on v0.35.0. The PDF
-// read got SLOWER on the offline tier (4.5 -> 5.0 s) and FASTER on the
-// networked one (5.8 -> 4.8 s), so the time is not a regression either way.
+// on v0.38.0, the same as on v0.37.0 and about 1.4 MB roomier than the
+// same read on v0.35.0. The PDF read took 5.0 s on both tiers, against
+// 5.0 s offline and 4.8 s networked on v0.37.0.
 //
 // That headroom belongs to temur's own expansion guard, not to this cap,
 // so it is not licence to raise 16 MiB: a document that expands to just
