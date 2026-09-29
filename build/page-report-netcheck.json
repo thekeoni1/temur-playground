@@ -2,11 +2,11 @@
  "mode": "netcheck",
  "tier": "networked",
  "tuiReadyMs": null,
- "wireBytes": 16108107,
- "stateBytes": 38011612,
- "fetchMs": 555,
- "restoreMs": 55,
- "readyMs": 1966,
+ "wireBytes": 17630573,
+ "stateBytes": 39351004,
+ "fetchMs": 1678,
+ "restoreMs": 80,
+ "readyMs": 3119,
  "relayWatch": "adapter-socket",
  "line": "PASS: reachable: https://api.anthropic.com (TCP connect + TLS handshake) #"
 }
