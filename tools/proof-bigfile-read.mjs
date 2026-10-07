@@ -267,8 +267,8 @@ await until(/#\s$/, 30000, "prompt after restore");
 
 let r = await run("temur --version");
 check(
-  "the snapshot's temur is v0.38.3",
-  /temur 0\.38\.3/.test(r.out),
+  "the snapshot's temur is v0.38.4",
+  /temur 0\.38\.4/.test(r.out),
   (r.out.match(/temur \d+\.\d+\.\d+/) || [""])[0],
 );
 check("guest is responsive before anything is dropped", await alive("start"));
