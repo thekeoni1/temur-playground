@@ -1,6 +1,6 @@
 {
  "label": "networked",
- "statePath": "build/state-p15-net.bin",
+ "statePath": "build/state-p16-net.bin",
  "wroteConfig": true,
  "capBytes": 16777216,
  "documents": [
@@ -13,31 +13,31 @@
    "sizeBytes": 16317903
   }
  ],
- "dropMs": 68,
+ "dropMs": 40,
  "shareTotalBytes": 32582316,
  "memory": [
   {
    "when": "1 before the drop",
-   "memFreeKb": 85168,
-   "memAvailableKb": 83072,
+   "memFreeKb": 84904,
+   "memAvailableKb": 82808,
    "cachedKb": 10028
   },
   {
    "when": "1b after the drop",
-   "memFreeKb": 85168,
-   "memAvailableKb": 83072,
+   "memFreeKb": 84904,
+   "memAvailableKb": 82808,
    "cachedKb": 10028
   },
   {
    "when": "2 after reading big.pdf",
-   "memFreeKb": 80232,
-   "memAvailableKb": 78140,
+   "memFreeKb": 80152,
+   "memAvailableKb": 78060,
    "cachedKb": 10076
   },
   {
    "when": "3 after reading big.xlsx",
-   "memFreeKb": 80244,
-   "memAvailableKb": 78156,
+   "memFreeKb": 80132,
+   "memAvailableKb": 78044,
    "cachedKb": 10072
   }
  ],
@@ -45,7 +45,7 @@
   {
    "name": "big.pdf",
    "sizeBytes": 16264413,
-   "turnMs": 5262,
+   "turnMs": 5511,
    "outcome": "clean read",
    "toolResultBytes": 7591,
    "toolResultFirstLine": "<path>/files/big.pdf</path>",
@@ -56,20 +56,20 @@
    "oomSigns": [],
    "memAfter": {
     "when": "2 after reading big.pdf",
-    "memFreeKb": 80232,
-    "memAvailableKb": 78140,
+    "memFreeKb": 80152,
+    "memAvailableKb": 78060,
     "cachedKb": 10076
    },
    "memPeakDuringRead": {
-    "minFreeKb": 53344,
-    "minAvailableKb": 51252,
-    "samples": 6
+    "minFreeKb": 53308,
+    "minAvailableKb": 51220,
+    "samples": 7
    }
   },
   {
    "name": "big.xlsx",
    "sizeBytes": 16317903,
-   "turnMs": 500,
+   "turnMs": 501,
    "outcome": "temur size refusal",
    "toolResultBytes": 68,
    "toolResultFirstLine": "This workbook expands to more than 64 MiB; temur will not unpack it.",
@@ -80,21 +80,21 @@
    "oomSigns": [],
    "memAfter": {
     "when": "3 after reading big.xlsx",
-    "memFreeKb": 80244,
-    "memAvailableKb": 78156,
+    "memFreeKb": 80132,
+    "memAvailableKb": 78044,
     "cachedKb": 10072
    },
    "memPeakDuringRead": {
-    "minFreeKb": 80204,
-    "minAvailableKb": 78112,
+    "minFreeKb": 80104,
+    "minAvailableKb": 78012,
     "samples": 2
    }
   }
  ],
  "results": {
-  "the snapshot's temur is v0.38.5": {
+  "the snapshot's temur is v0.38.6": {
    "ok": true,
-   "detail": "temur 0.38.5"
+   "detail": "temur 0.38.6"
   },
   "guest is responsive before anything is dropped": {
    "ok": true
@@ -123,7 +123,7 @@
   },
   "GATE big.pdf: the page did not hang (the turn returned)": {
    "ok": true,
-   "detail": "5.3 s"
+   "detail": "5.5 s"
   },
   "GATE big.pdf: a clean read OR temur's own size refusal": {
    "ok": true,

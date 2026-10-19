@@ -1,4 +1,4 @@
-// THE OFFICE-READ PROOF: temur v0.38.5 turns PDF, Word and spreadsheet
+// THE OFFICE-READ PROOF: temur v0.38.6 turns PDF, Word and spreadsheet
 // files dropped into /files into text, inside the shipped snapshot.
 //
 // This is the claim the page makes to a visitor in one sentence
@@ -134,8 +134,8 @@ await until(/#\s$/, 30000, "prompt after restore");
 
 let r = await run("temur --version");
 check(
-  "the snapshot's temur is v0.38.5",
-  /temur 0\.38\.5/.test(r.out),
+  "the snapshot's temur is v0.38.6",
+  /temur 0\.38\.6/.test(r.out),
   (r.out.match(/temur \d+\.\d+\.\d+/) || [""])[0],
 );
 
