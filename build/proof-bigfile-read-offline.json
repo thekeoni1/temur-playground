@@ -1,6 +1,6 @@
 {
  "label": "offline",
- "statePath": "build/state-p16-offline.bin",
+ "statePath": "build/state-p17-offline.bin",
  "wroteConfig": false,
  "capBytes": 16777216,
  "documents": [
@@ -10,42 +10,42 @@
   },
   {
    "name": "big.xlsx",
-   "sizeBytes": 16317903
+   "sizeBytes": 16361891
   }
  ],
- "dropMs": 61,
- "shareTotalBytes": 32582316,
+ "dropMs": 35,
+ "shareTotalBytes": 32626304,
  "memory": [
   {
    "when": "1 before the drop",
-   "memFreeKb": 85040,
-   "memAvailableKb": 82944,
-   "cachedKb": 10032
+   "memFreeKb": 85296,
+   "memAvailableKb": 83200,
+   "cachedKb": 10036
   },
   {
    "when": "1b after the drop",
-   "memFreeKb": 85040,
-   "memAvailableKb": 82944,
-   "cachedKb": 10032
+   "memFreeKb": 85296,
+   "memAvailableKb": 83200,
+   "cachedKb": 10036
   },
   {
    "when": "2 after reading big.pdf",
-   "memFreeKb": 80236,
-   "memAvailableKb": 78144,
-   "cachedKb": 10072
+   "memFreeKb": 80248,
+   "memAvailableKb": 78156,
+   "cachedKb": 10076
   },
   {
    "when": "3 after reading big.xlsx",
-   "memFreeKb": 80256,
-   "memAvailableKb": 78164,
-   "cachedKb": 10068
+   "memFreeKb": 80264,
+   "memAvailableKb": 78176,
+   "cachedKb": 10072
   }
  ],
  "reads": [
   {
    "name": "big.pdf",
    "sizeBytes": 16264413,
-   "turnMs": 5504,
+   "turnMs": 6021,
    "outcome": "clean read",
    "toolResultBytes": 7591,
    "toolResultFirstLine": "<path>/files/big.pdf</path>",
@@ -56,20 +56,20 @@
    "oomSigns": [],
    "memAfter": {
     "when": "2 after reading big.pdf",
-    "memFreeKb": 80236,
-    "memAvailableKb": 78144,
-    "cachedKb": 10072
+    "memFreeKb": 80248,
+    "memAvailableKb": 78156,
+    "cachedKb": 10076
    },
    "memPeakDuringRead": {
-    "minFreeKb": 53408,
-    "minAvailableKb": 51316,
+    "minFreeKb": 53364,
+    "minAvailableKb": 51276,
     "samples": 7
    }
   },
   {
    "name": "big.xlsx",
-   "sizeBytes": 16317903,
-   "turnMs": 503,
+   "sizeBytes": 16361891,
+   "turnMs": 501,
    "outcome": "temur size refusal",
    "toolResultBytes": 68,
    "toolResultFirstLine": "This workbook expands to more than 64 MiB; temur will not unpack it.",
@@ -80,21 +80,21 @@
    "oomSigns": [],
    "memAfter": {
     "when": "3 after reading big.xlsx",
-    "memFreeKb": 80256,
-    "memAvailableKb": 78164,
-    "cachedKb": 10068
+    "memFreeKb": 80264,
+    "memAvailableKb": 78176,
+    "cachedKb": 10072
    },
    "memPeakDuringRead": {
-    "minFreeKb": 80308,
-    "minAvailableKb": 78216,
+    "minFreeKb": 80264,
+    "minAvailableKb": 78172,
     "samples": 2
    }
   }
  ],
  "results": {
-  "the snapshot's temur is v0.38.6": {
+  "the snapshot's temur is v0.39.0": {
    "ok": true,
-   "detail": "temur 0.38.6"
+   "detail": "temur 0.39.0"
   },
   "guest is responsive before anything is dropped": {
    "ok": true
@@ -124,7 +124,7 @@
   },
   "GATE big.pdf: the page did not hang (the turn returned)": {
    "ok": true,
-   "detail": "5.5 s"
+   "detail": "6.0 s"
   },
   "GATE big.pdf: a clean read OR temur's own size refusal": {
    "ok": true,

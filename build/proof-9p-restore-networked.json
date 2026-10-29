@@ -1,6 +1,6 @@
 {
  "label": "networked",
- "statePath": "build/state-p16-net.bin",
+ "statePath": "build/state-p17-net.bin",
  "results": {
   "ICRNL on in the restored snapshot, no page nudge": {
    "ok": true
@@ -14,7 +14,7 @@
   },
   "upload: host sha256 == guest sha256": {
    "ok": true,
-   "detail": "host 4a8f2d15d943037c guest 4a8f2d15d943037c (65536 B)"
+   "detail": "host 1e2182e979694cac guest 1e2182e979694cac (65536 B)"
   },
   "same hash after drop_caches (not served from cache)": {
    "ok": true
@@ -25,7 +25,7 @@
   },
   "download: guest sha256 == bytes the page reads back": {
    "ok": true,
-   "detail": "guest edcfb174bb7fa169 js edcfb174bb7fa169 (65536 B)"
+   "detail": "guest f82d53b7fe33496d js f82d53b7fe33496d (65536 B)"
   },
   "temur is present and the share is a working directory": {
    "ok": true
