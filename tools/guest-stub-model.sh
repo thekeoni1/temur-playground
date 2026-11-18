@@ -57,6 +57,18 @@ done
 # handled correctly. Anything that is not a chat POST is refused here
 # without touching the counter, which is also what an unconfigured server
 # would do.
+#
+# NOR IS EVERY CHAT POST. temur v0.40.0 (T69) sends a tools-drop probe at
+# the start of every session on a keyless openai-compat endpoint: a POST to
+# chat/completions with "stream":false and "max_tokens":1, and a one-shot
+# run waits for it before its turn. That is not a turn either. Answered as
+# one, it took the plan's first line, temur could not use the event stream
+# it got back, and the plan ran one read short, the same shift as the
+# /models GET above. So the body is read before anything else, and a
+# request that is not streamed gets the same 404 as any other non-turn,
+# with the counter not moved and no request file written. A 404 on the
+# bare probe makes the session say nothing, which is what temur does for
+# any server that gives it no usable answer.
 case "$REQLINE" in
   [Pp][Oo][Ss][Tt]*chat/completions*) ;;
   *)
@@ -70,14 +82,28 @@ case "$REQLINE" in
     ;;
 esac
 
-N=$(cat "$COUNT" 2>/dev/null || echo 0)
-N=$((N + 1))
-echo "$N" > "$COUNT"
+BODY=/tmp/stub-body
+: > "$BODY"
 if [ "${len:-0}" -gt 0 ]; then
   # head -c, not dd bs=1: the body grows with every tool result carried
   # forward, and a byte-at-a-time read of 30 kB inside the emulator is
   # slow enough to look like a hang.
-  head -c "$len" > "$SHARE/req-$N.json"
+  head -c "$len" > "$BODY"
+fi
+if grep -q '"stream":false' "$BODY"; then
+  printf 'HTTP/1.1 404 Not Found\r\n'
+  printf 'Content-Type: application/json\r\n'
+  printf 'Connection: close\r\n'
+  printf '\r\n'
+  printf '{"error":"the scripted model serves chat/completions only"}'
+  exit 0
+fi
+
+N=$(cat "$COUNT" 2>/dev/null || echo 0)
+N=$((N + 1))
+echo "$N" > "$COUNT"
+if [ "${len:-0}" -gt 0 ]; then
+  cat "$BODY" > "$SHARE/req-$N.json"
 fi
 
 # --- reply ---------------------------------------------------------------

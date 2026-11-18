@@ -5,8 +5,8 @@
  "wizardAtFirstQuestion": true,
  "configPath": null,
  "relayWatch": "adapter-socket",
- "readyMs": 1953,
- "stampText": "build c8cc992 · source, relay included (AGPL-3.0) · temur v0.39.0 (release, sha256 b54b4f3bf2cb86961eba14b536a9902e46940988504a885075f0e26fbdf1af03) · deployment runbook · relay /version",
+ "readyMs": 1985,
+ "stampText": "build 73ed3bc · source, relay included (AGPL-3.0) · temur v0.40.0 (release, sha256 38ba7b97f93a5b43cf315f949832435f5425f305eeb781c87e42b54f2ca086ae) · deployment runbook · relay /version",
  "relayWs": "ws://127.0.0.1:8089/",
  "relayWisp": "wisp://127.0.0.1:8089/"
 }
